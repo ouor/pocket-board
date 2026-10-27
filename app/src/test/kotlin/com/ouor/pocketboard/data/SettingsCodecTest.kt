@@ -26,4 +26,12 @@ class SettingsCodecTest {
         assertEquals(2000L, c.restartPauseMs)
         assertEquals(0f, c.restartOverlapRatio)
     }
+
+    @Test
+    fun outOfRangeGestureValuesAreClamped() {
+        val p = mutablePreferencesOf(longPreferencesKey("gesture_tap_max_ms") to 5L, floatPreferencesKey("gesture_swipe_axis_ratio") to 0.2f)
+        val g = SettingsCodec.decode(p).gesture
+        assertEquals(50L, g.tapMaxMs)
+        assertEquals(1f, g.swipeAxisRatio)
+    }
 }

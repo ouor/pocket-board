@@ -15,6 +15,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.ouor.pocketboard.core.gesture.GestureConfig
 import com.ouor.pocketboard.core.gesture.HapticSettings
 import com.ouor.pocketboard.core.gesture.HapticStrength
+import com.ouor.pocketboard.core.gesture.engine.coerced
 import com.ouor.pocketboard.core.ink.InkSettings
 import com.ouor.pocketboard.core.ink.SegmentationMode
 import com.ouor.pocketboard.core.ink.rules.InkConfig
@@ -56,6 +57,7 @@ class SettingsRepository(context: Context, scope: CoroutineScope) {
 /** 키 이름이 저장 형식이다. 바꾸지 않는다. enum 은 id 로 저장하고 모르는 id 는 기본값. */
 internal object SettingsCodec {
     private val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
+    private val ONBOARDING_STEP = intPreferencesKey("onboarding_step")
     private val IDLE_TIMEOUT_MIN = intPreferencesKey("idle_timeout_min")
     private val EMPTY_SEND_ENTER = booleanPreferencesKey("empty_send_enter")
     private val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
@@ -92,6 +94,7 @@ internal object SettingsCodec {
         val i = d.ink.config
         return AppSettings(
             onboardingDone = p[ONBOARDING_DONE] ?: d.onboardingDone,
+            onboardingStep = p[ONBOARDING_STEP] ?: d.onboardingStep,
             idleTimeoutMin = p[IDLE_TIMEOUT_MIN] ?: d.idleTimeoutMin,
             emptySendEnter = p[EMPTY_SEND_ENTER] ?: d.emptySendEnter,
             haptics = HapticSettings(
@@ -128,7 +131,7 @@ internal object SettingsCodec {
                 swipeAxisRatio = p[SWIPE_AXIS_RATIO] ?: g.swipeAxisRatio,
                 palmTouchMajorDp = p[PALM_MAJOR] ?: g.palmTouchMajorDp,
                 edgeBandDp = p[EDGE_BAND] ?: g.edgeBandDp,
-            ),
+            ).coerced(), // 범위 밖 저장값이면 판정기 생성 시 예외(gesture.md §3)
             devOptionsVisible = p[DEV_OPTIONS_VISIBLE] ?: d.devOptionsVisible,
             devlogEnabled = p[DEVLOG_ENABLED] ?: d.devlogEnabled,
         )
@@ -136,6 +139,7 @@ internal object SettingsCodec {
 
     fun encode(s: AppSettings, p: MutablePreferences) {
         p[ONBOARDING_DONE] = s.onboardingDone
+        p[ONBOARDING_STEP] = s.onboardingStep
         p[IDLE_TIMEOUT_MIN] = s.idleTimeoutMin
         p[EMPTY_SEND_ENTER] = s.emptySendEnter
         p[HAPTICS_ENABLED] = s.haptics.enabled

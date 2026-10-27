@@ -11,6 +11,8 @@ import com.ouor.pocketboard.core.keymap.KeymapSettings
  */
 data class AppSettings(
     val onboardingDone: Boolean = false,
+    /** 첫 실행 이어하기: 마지막으로 들어간 온보딩 화면(UI 의 OnboardingStep 순서). 0 = 환영. */
+    val onboardingStep: Int = 0,
     /** 0 = 끄지 않음(F15). */
     val idleTimeoutMin: Int = 30,
     val emptySendEnter: Boolean = true,
