@@ -134,6 +134,14 @@ class DefaultGestureRecognizerTest {
     }
 
     @Test
+    fun configRanges_defaultsInside_outsideRejectedOrCoerced() {
+        GestureConfig().requireInRange()
+        val bad = GestureConfig(tapSlopDp = 500f, multiTapGapMs = 0)
+        assertEquals(GestureConfig(tapSlopDp = 48f, multiTapGapMs = 100), bad.coerced())
+        assertTrue(runCatching { DefaultGestureRecognizer(bad) }.isFailure)
+    }
+
+    @Test
     fun mapping_sendRequired_andDecodeIgnoresUnknown() {
         val m = MappingCodec.decode(mapOf("tap.f1.x4" to "enter", "bogus" to "send", "tap.f2.x1" to "none", "tap.f3.x1" to "??"))
         assertEquals(Action.ENTER, m.actions[Gesture.Tap(1, 4)])

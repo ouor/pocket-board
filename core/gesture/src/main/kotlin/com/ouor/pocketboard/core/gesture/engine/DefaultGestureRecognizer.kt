@@ -25,6 +25,10 @@ class DefaultGestureRecognizer(
     private val rules: GestureRules = DefaultRules.create(config),
 ) : GestureRecognizer {
 
+    init {
+        config.requireInRange()
+    }
+
     private class PendingRecord(val samples: List<TouchSample>, var result: String, val ruleIds: MutableList<String>) {
         fun toRecord() = ContactRecord(samples, result, ruleIds.toList())
     }
