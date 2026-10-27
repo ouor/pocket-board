@@ -32,7 +32,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             PocketTheme {
                 val start by produceState<Any?>(null) {
-                    value = if (vm.loadSettings().onboardingDone) Home else Welcome
+                    val s = vm.loadSettings()
+                    value = if (s.onboardingDone) Home else onboardingResume(s.onboardingStep)
                 }
                 start?.let { PocketApp(vm, it, destination) }
             }

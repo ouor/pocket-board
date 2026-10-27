@@ -76,6 +76,23 @@ import kotlinx.serialization.Serializable
 @Serializable data class Troubleshoot(val symptom: Int = -1)
 @Serializable object DevOptions
 
+/**
+ * 첫 실행 이어하기(screens §0): 필수 단계(환영~연결 테스트) 중 마지막으로 들어간 화면부터 다시 연다.
+ * 연결 테스트가 끝나면 onboardingDone 이 되므로 튜토리얼·연습(건너뛸 수 있는 단계)은 이어 열지 않는다.
+ */
+fun onboardingResume(step: Int): Any = when (step) {
+    1 -> Permission(onboarding = true)
+    2 -> Model(onboarding = true)
+    3 -> Pairing(onboarding = true)
+    4 -> ConnectionTest(onboarding = true)
+    else -> Welcome
+}
+
+@Composable
+private fun SaveOnboardingStep(vm: AppViewModel, step: Int) {
+    LaunchedEffect(Unit) { if (vm.settings.value.onboardingStep != step) vm.update { it.copy(onboardingStep = step) } }
+}
+
 /** 홈·설정의 일시 결과(Snackbar). 쓰기 화면에서는 쓰지 않는다(D1). */
 val LocalSnackbar = staticCompositionLocalOf { SnackbarHostState() }
 
@@ -145,15 +162,18 @@ private fun PocketNavHost(nav: NavHostController, vm: AppViewModel, start: Any) 
 
     NavHost(nav, startDestination = start) {
         composable<Welcome> {
+            SaveOnboardingStep(vm, 0)
             WelcomeRoute(vm, onSupported = { go(Permission(onboarding = true)) }, onUnsupported = { go(Unsupported()) }, onPrivacy = { go(Privacy) })
         }
         composable<Unsupported> { UnsupportedScreen(model = it.toRoute<Unsupported>().model, onClose = { activity?.finish() }) }
         composable<Permission> {
             val r = it.toRoute<Permission>()
+            if (r.onboarding) SaveOnboardingStep(vm, 1)
             PermissionRoute(vm, r.onboarding, onGranted = { if (r.onboarding) replace(Model(onboarding = true)) else back() }, onBack = back)
         }
         composable<Model> {
             val r = it.toRoute<Model>()
+            if (r.onboarding) SaveOnboardingStep(vm, 2)
             ModelRoute(
                 vm, r.onboarding, r.toWriting,
                 onNext = { if (r.toWriting) replace(Writing) else go(Pairing(onboarding = true)) },
@@ -163,6 +183,7 @@ private fun PocketNavHost(nav: NavHostController, vm: AppViewModel, start: Any) 
         }
         composable<Pairing> {
             val r = it.toRoute<Pairing>()
+            if (r.onboarding) SaveOnboardingStep(vm, 3)
             PairingRoute(
                 vm, r.onboarding, r.repair,
                 onConnected = { if (r.onboarding) go(ConnectionTest(onboarding = true)) else replace(ConnectionTest(onboarding = false)) },
@@ -173,6 +194,7 @@ private fun PocketNavHost(nav: NavHostController, vm: AppViewModel, start: Any) 
         }
         composable<ConnectionTest> {
             val r = it.toRoute<ConnectionTest>()
+            if (r.onboarding) SaveOnboardingStep(vm, 4)
             ConnectionTestRoute(
                 vm, r.onboarding,
                 onYes = { if (r.onboarding) go(Tutorial(onboarding = true)) else back() },

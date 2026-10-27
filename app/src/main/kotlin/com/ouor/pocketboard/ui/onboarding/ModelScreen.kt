@@ -1,5 +1,8 @@
 package com.ouor.pocketboard.ui.onboarding
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,7 +22,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ouor.pocketboard.core.ink.ModelState
 import com.ouor.pocketboard.ui.AppViewModel
@@ -45,15 +50,21 @@ import com.ouor.pocketboard.ui.theme.Space
 fun ModelRoute(vm: AppViewModel, onboarding: Boolean, toWriting: Boolean, onNext: () -> Unit, onUnavailable: () -> Unit, onBack: () -> Unit) {
     val state by vm.model.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.ensureDownloaded() }
+    val context = LocalContext.current
+    var cellular by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(state) { // 돌아올 때마다(와이파이 켜고 오는 경우) 다시 본다
+        cellular = context.onMobileData()
+        onPauseOrDispose {}
+    }
     LaunchedEffect(state) {
         if (state == ModelState.Unavailable) onUnavailable()
         if (toWriting && state == ModelState.Ready) onNext()
     }
-    ModelScreen(state, onboarding, onRetry = vm::ensureDownloaded, onNext = onNext, onRedownload = vm::redownload, onBack = onBack)
+    ModelScreen(state, onboarding, cellular = cellular, onRetry = vm::ensureDownloaded, onNext = onNext, onRedownload = vm::redownload, onBack = onBack)
 }
 
 @Composable
-fun ModelScreen(state: ModelState, onboarding: Boolean, onRetry: () -> Unit, onNext: () -> Unit, onRedownload: () -> Unit, onBack: () -> Unit) {
+fun ModelScreen(state: ModelState, onboarding: Boolean, onRetry: () -> Unit, onNext: () -> Unit, onRedownload: () -> Unit, onBack: () -> Unit, cellular: Boolean = false) {
     var confirm by remember { mutableStateOf(false) }
     val title = when (state) {
         ModelState.Checking -> "글씨 인식 모델을 받을게요"
@@ -90,7 +101,8 @@ fun ModelScreen(state: ModelState, onboarding: Boolean, onRetry: () -> Unit, onN
                         Text("모델 ${state.completed}/${state.total} 완료", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                TipCard("와이파이에서 받기를 권해요. 한 번 받으면 인터넷 없이 동작해요.", Icons.Rounded.Wifi, title = "한글 · 영어, 약 40MB")
+                if (cellular) WarningCard("와이파이에 연결하면 데이터 요금 없이 받을 수 있어요.", title = "모바일 데이터로 받아요 · 약 40MB")
+                else TipCard("한 번 받으면 인터넷 없이 동작해요.", Icons.Rounded.Wifi, title = "한글 · 영어, 약 40MB")
             }
             is ModelState.Failed -> WarningCard(
                 if (state.reason == ModelState.Reason.NETWORK) "인터넷에 연결한 뒤 다시 시도해 주세요. 한 번만 받으면 돼요."
@@ -119,6 +131,16 @@ fun ModelScreen(state: ModelState, onboarding: Boolean, onRetry: () -> Unit, onN
 @Preview(heightDp = 720)
 @Composable
 private fun ModelDownloadingPreview() = PocketTheme { ModelScreen(ModelState.Downloading(1, 2), true, {}, {}, {}, {}) }
+
+/** 지금 쓰는 네트워크가 모바일 데이터인지(SC04 경고). */
+private fun Context.onMobileData(): Boolean {
+    val cm = getSystemService(ConnectivityManager::class.java) ?: return false
+    return cm.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+}
+
+@Preview(heightDp = 720)
+@Composable
+private fun ModelCellularPreview() = PocketTheme { ModelScreen(ModelState.Checking, true, {}, {}, {}, {}, cellular = true) }
 
 @Preview(heightDp = 720)
 @Composable
