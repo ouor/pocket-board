@@ -15,7 +15,6 @@ import com.ouor.pocketboard.core.ink.HandwritingRecognizer
 import com.ouor.pocketboard.core.ink.InkSettings
 import com.ouor.pocketboard.core.ink.ModelState
 import com.ouor.pocketboard.core.ink.RecognitionOutcome
-import com.ouor.pocketboard.core.ink.rules.InkConfig
 import com.ouor.pocketboard.core.ink.rules.defaultInkRules
 import com.ouor.pocketboard.core.ink.segment.Box
 import com.ouor.pocketboard.core.ink.segment.InkEngine
@@ -32,7 +31,6 @@ internal class MlKitHandwritingRecognizer(
     models: Map<InkLanguage, DigitalInkRecognitionModel>?,
     private val modelState: StateFlow<ModelState>,
     private val settings: StateFlow<InkSettings>,
-    config: InkConfig,
 ) : HandwritingRecognizer, InkEngine {
 
     private val clients: Map<InkLanguage, DigitalInkRecognizer> = try {
@@ -40,8 +38,6 @@ internal class MlKitHandwritingRecognizer(
     } catch (e: Throwable) {
         Log.e(TAG, "getClient", e); emptyMap()
     }
-
-    private val pipeline = InkPipeline(this, config, defaultInkRules(config))
 
     private val ready get() = modelState.value == ModelState.Ready && clients.size == InkLanguage.entries.size
 
@@ -55,7 +51,10 @@ internal class MlKitHandwritingRecognizer(
 
     override suspend fun recognize(items: List<InkItem>, preContext: String): RecognitionOutcome {
         if (!ready) return RecognitionOutcome.ModelNotReady
-        return withContext(Dispatchers.Default) { pipeline.recognize(items, preContext, settings.value.segmentation) }
+        val s = settings.value   // 전송마다 현재 설정(A36). 규칙 생성 비용은 무시할 만하다
+        return withContext(Dispatchers.Default) {
+            InkPipeline(this@MlKitHandwritingRecognizer, s.config, defaultInkRules(s.config)).recognize(items, preContext, s.segmentation)
+        }
     }
 
     /** ML Kit 호출. 실패는 빈 목록(→ Candidate 규칙이 Empty 로 판정). */

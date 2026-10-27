@@ -1,11 +1,15 @@
 package com.ouor.pocketboard.core.ink
 
+import com.ouor.pocketboard.core.ink.rules.InkConfig
+
 /**
  * 개발자 옵션에서 바꾸는 인식 방식(A32와 같은 취지). 저장은 :app, 값은 MlKitInkModelManager 에 StateFlow 로 넘긴다.
  * 인식할 때마다 현재 값을 읽으므로 인식기를 다시 열 필요가 없다.
  */
 data class InkSettings(
     val segmentation: SegmentationMode = SegmentationMode.RULES,
+    /** 분할·재배치 임계값(A36). 저장 키·범위는 docs/core/ink.md §3. */
+    val config: InkConfig = InkConfig(),
 )
 
 /** 겹쳐 쓰기 처리 방식(ink.md §4.3 실험 A/B/C). [id]는 저장용 고정 문자열. */

@@ -11,7 +11,6 @@ import com.ouor.pocketboard.core.ink.HandwritingRecognizer
 import com.ouor.pocketboard.core.ink.InkModelManager
 import com.ouor.pocketboard.core.ink.InkSettings
 import com.ouor.pocketboard.core.ink.ModelState
-import com.ouor.pocketboard.core.ink.rules.InkConfig
 import com.ouor.pocketboard.core.ink.segment.InkLanguage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -74,7 +73,7 @@ class MlKitInkModelManager(
     }
 
     override fun openRecognizer(): HandwritingRecognizer =
-        MlKitHandwritingRecognizer(models, state, settings, InkConfig())
+        MlKitHandwritingRecognizer(models, state, settings)
 
     private suspend fun download() {
         val models = models ?: return

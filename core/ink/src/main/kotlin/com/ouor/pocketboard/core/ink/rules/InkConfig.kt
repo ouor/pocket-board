@@ -21,6 +21,17 @@ data class InkConfig(
     /** 단계 C 에서 단어 하나당 추가 인식 호출 상한(지연 예산). */
     val maxHypothesisCalls: Int = 4,
 ) {
+    // 범위는 docs/core/ink.md §3 표와 같다. 설정 저장소(:app)가 범위 밖 값을 넘기면 프로그래머 오류.
+    init {
+        require(minCharSize in 8f..96f) { "minCharSize $minCharSize" }
+        require(rightOfGapRatio in 0f..2f) { "rightOfGapRatio $rightOfGapRatio" }
+        require(restartOverlapRatio in 0f..1f) { "restartOverlapRatio $restartOverlapRatio" }
+        require(restartMarginRatio in 0f..1f) { "restartMarginRatio $restartMarginRatio" }
+        require(restartPauseMs in 0L..2000L) { "restartPauseMs $restartPauseMs" }
+        require(relayoutGapRatio in 0f..1f) { "relayoutGapRatio $relayoutGapRatio" }
+        require(maxHypothesisCalls in 0..10) { "maxHypothesisCalls $maxHypothesisCalls" }
+    }
+
     fun charSize(height: Float) = maxOf(height, minCharSize)
 }
 
