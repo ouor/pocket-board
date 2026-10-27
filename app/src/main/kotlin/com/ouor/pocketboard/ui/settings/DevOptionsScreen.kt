@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ouor.pocketboard.core.gesture.GestureConfig
+import com.ouor.pocketboard.core.gesture.engine.GestureRanges
 import com.ouor.pocketboard.core.ink.InkSettings
 import com.ouor.pocketboard.core.ink.SegmentationMode
 import com.ouor.pocketboard.core.ink.rules.InkConfig
@@ -117,26 +118,26 @@ fun DevOptionsScreen(
 
         SettingGroup("글씨 인식(A36)") {
             SettingRow("겹쳐 쓰기 처리", RowKind.Value, value = SEGMENTATION.name(s.ink.segmentation)) { sheet = "seg" }
-            Num("같은 자리 재시작 쉼", i.restartPauseMs.toDouble(), 25.0, 0.0, 2000.0, "ms", 0) { v -> ink { it.copy(restartPauseMs = v.toLong()) } }
-            Num("재시작 겹침 비율", i.restartOverlapRatio.toDouble(), 0.05, 0.0, 1.0, "", 2) { v -> ink { it.copy(restartOverlapRatio = v.toFloat()) } }
-            Num("재시작 상자 여유", i.restartMarginRatio.toDouble(), 0.05, 0.0, 1.0, "×", 2) { v -> ink { it.copy(restartMarginRatio = v.toFloat()) } }
-            Num("오른쪽 새 글자 간격", i.rightOfGapRatio.toDouble(), 0.05, 0.0, 2.0, "×", 2) { v -> ink { it.copy(rightOfGapRatio = v.toFloat()) } }
-            Num("재배치 간격", i.relayoutGapRatio.toDouble(), 0.05, 0.0, 1.0, "×", 2) { v -> ink { it.copy(relayoutGapRatio = v.toFloat()) } }
-            Num("글자 크기 하한", i.minCharSize.toDouble(), 2.0, InkRanges.minCharSize.start.toDouble(), InkRanges.minCharSize.endInclusive.toDouble(), "dp", 0) { v -> ink { it.copy(minCharSize = v.toFloat()) } }
-            Num("C단계 추가 인식 상한", i.maxHypothesisCalls.toDouble(), 1.0, 0.0, 10.0, "회", 0) { v -> ink { it.copy(maxHypothesisCalls = v.toInt()) } }
+            Num("같은 자리 재시작 쉼", i.restartPauseMs.toDouble(), 25.0, InkRanges.restartPauseMs.l(), "ms", 0) { v -> ink { it.copy(restartPauseMs = v.toLong()) } }
+            Num("재시작 겹침 비율", i.restartOverlapRatio.toDouble(), 0.05, InkRanges.ratio.f(), "", 2) { v -> ink { it.copy(restartOverlapRatio = v.toFloat()) } }
+            Num("재시작 상자 여유", i.restartMarginRatio.toDouble(), 0.05, InkRanges.ratio.f(), "×", 2) { v -> ink { it.copy(restartMarginRatio = v.toFloat()) } }
+            Num("오른쪽 새 글자 간격", i.rightOfGapRatio.toDouble(), 0.05, InkRanges.rightOfGapRatio.f(), "×", 2) { v -> ink { it.copy(rightOfGapRatio = v.toFloat()) } }
+            Num("재배치 간격", i.relayoutGapRatio.toDouble(), 0.05, InkRanges.ratio.f(), "×", 2) { v -> ink { it.copy(relayoutGapRatio = v.toFloat()) } }
+            Num("글자 크기 하한", i.minCharSize.toDouble(), 2.0, InkRanges.minCharSize.f(), "dp", 0) { v -> ink { it.copy(minCharSize = v.toFloat()) } }
+            Num("C단계 추가 인식 상한", i.maxHypothesisCalls.toDouble(), 1.0, InkRanges.maxHypothesisCalls.let { it.first.toDouble()..it.last.toDouble() }, "회", 0) { v -> ink { it.copy(maxHypothesisCalls = v.toInt()) } }
         }
 
-        // 범위는 실기기 조정에 충분한 폭으로 UI 가 정한다(GestureConfig 는 검사하지 않음)
         SettingGroup("제스처 판정(A36)") {
-            Num("탭 이동 허용", g.tapSlopDp.toDouble(), 1.0, 2.0, 48.0, "dp", 0) { v -> gesture { it.copy(tapSlopDp = v.toFloat()) } }
-            Num("탭 최대 시간", g.tapMaxMs.toDouble(), 10.0, 50.0, 1000.0, "ms", 0) { v -> gesture { it.copy(tapMaxMs = v.toLong()) } }
-            Num("연속 탭 간격", g.multiTapGapMs.toDouble(), 10.0, 100.0, 1000.0, "ms", 0) { v -> gesture { it.copy(multiTapGapMs = v.toLong()) } }
-            Num("연속 탭 반경", g.multiTapRadiusDp.toDouble(), 2.0, 4.0, 96.0, "dp", 0) { v -> gesture { it.copy(multiTapRadiusDp = v.toFloat()) } }
-            Num("여러 손가락 착지 창", g.multiDownWindowMs.toDouble(), 10.0, 20.0, 500.0, "ms", 0) { v -> gesture { it.copy(multiDownWindowMs = v.toLong()) } }
-            Num("스와이프 최소 거리", g.swipeMinDp.toDouble(), 4.0, 16.0, 200.0, "dp", 0) { v -> gesture { it.copy(swipeMinDp = v.toFloat()) } }
-            Num("스와이프 축 비율", g.swipeAxisRatio.toDouble(), 0.1, 1.0, 5.0, "", 1) { v -> gesture { it.copy(swipeAxisRatio = v.toFloat()) } }
-            Num("손바닥 크기(0=끔)", g.palmTouchMajorDp.toDouble(), 1.0, 0.0, 60.0, "dp", 0) { v -> gesture { it.copy(palmTouchMajorDp = v.toFloat()) } }
-            Num("가장자리 무시 띠", g.edgeBandDp.toDouble(), 2.0, 0.0, 64.0, "dp", 0) { v -> gesture { it.copy(edgeBandDp = v.toFloat()) } }
+            val r = GestureRanges
+            Num("탭 이동 허용", g.tapSlopDp.toDouble(), 1.0, r.tapSlopDp.f(), "dp", 0) { v -> gesture { it.copy(tapSlopDp = v.toFloat()) } }
+            Num("탭 최대 시간", g.tapMaxMs.toDouble(), 10.0, r.tapMaxMs.l(), "ms", 0) { v -> gesture { it.copy(tapMaxMs = v.toLong()) } }
+            Num("연속 탭 간격", g.multiTapGapMs.toDouble(), 10.0, r.multiTapGapMs.l(), "ms", 0) { v -> gesture { it.copy(multiTapGapMs = v.toLong()) } }
+            Num("연속 탭 반경", g.multiTapRadiusDp.toDouble(), 2.0, r.multiTapRadiusDp.f(), "dp", 0) { v -> gesture { it.copy(multiTapRadiusDp = v.toFloat()) } }
+            Num("여러 손가락 착지 창", g.multiDownWindowMs.toDouble(), 10.0, r.multiDownWindowMs.l(), "ms", 0) { v -> gesture { it.copy(multiDownWindowMs = v.toLong()) } }
+            Num("스와이프 최소 거리", g.swipeMinDp.toDouble(), 4.0, r.swipeMinDp.f(), "dp", 0) { v -> gesture { it.copy(swipeMinDp = v.toFloat()) } }
+            Num("스와이프 축 비율", g.swipeAxisRatio.toDouble(), 0.1, r.swipeAxisRatio.f(), "", 1) { v -> gesture { it.copy(swipeAxisRatio = v.toFloat()) } }
+            Num("손바닥 크기(0=끔)", g.palmTouchMajorDp.toDouble(), 1.0, r.palmTouchMajorDp.f(), "dp", 0) { v -> gesture { it.copy(palmTouchMajorDp = v.toFloat()) } }
+            Num("가장자리 무시 띠(0=끔)", g.edgeBandDp.toDouble(), 2.0, r.edgeBandDp.f(), "dp", 0) { v -> gesture { it.copy(edgeBandDp = v.toFloat()) } }
             SettingRow("임계값 기본값으로", RowKind.Action, supporting = "인식·제스처 수치만 되돌려요") {
                 update { it.copy(ink = InkSettings(it.ink.segmentation), gesture = GestureConfig()) }
             }
@@ -163,9 +164,14 @@ fun DevOptionsScreen(
     }
 }
 
+private fun ClosedFloatingPointRange<Float>.f() = start.toDouble()..endInclusive.toDouble()
+private fun LongRange.l() = first.toDouble()..last.toDouble()
+
 /** 수치 한 줄. 결과를 [decimals] 자리로 반올림하고 [min]..[max] 로 자른다(범위 밖이면 코어가 예외, ink.md §3.1). */
 @Composable
-private fun Num(title: String, value: Double, step: Double, min: Double, max: Double, unit: String, decimals: Int, set: (Double) -> Unit) {
+private fun Num(title: String, value: Double, step: Double, range: ClosedFloatingPointRange<Double>, unit: String, decimals: Int, set: (Double) -> Unit) {
+    val min = range.start
+    val max = range.endInclusive
     fun next(d: Double): Double {
         val p = 10.0.pow(decimals)
         return ((value + d) * p).roundToLong().div(p).coerceIn(min, max)

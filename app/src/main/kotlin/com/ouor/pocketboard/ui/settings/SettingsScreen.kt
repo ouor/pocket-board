@@ -122,8 +122,9 @@ fun SettingsScreen(
                 "진동 세기", RowKind.Value, value = STRENGTH_OPTIONS.first { it.first == settings.haptics.strength }.second,
                 enabled = settings.haptics.enabled, supporting = if (settings.haptics.enabled) null else "진동이 꺼져 있어요",
             ) { sheet = "strength" }
-            // F25: 세션에 미리보기 상태가 아직 없다(코어 요청). 그때까지 비활성.
-            SettingRow("어두운 미리보기", RowKind.Toggle, checked = false, enabled = false, supporting = "쓰는 동안 결과를 아주 어둡게 보여 줘요 · 준비 중이에요")
+            SettingRow("어두운 미리보기", RowKind.Toggle, checked = settings.previewEnabled, supporting = "쓰는 동안 인식 결과를 아주 어둡게 보여 줘요") {
+                update { it.copy(previewEnabled = !it.previewEnabled) }
+            }
         }
         SettingGroup("인식") {
             SettingRow(

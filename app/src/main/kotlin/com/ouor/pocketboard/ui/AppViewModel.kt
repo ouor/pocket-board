@@ -40,6 +40,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun connect(host: HostDevice) = c.connection.connect(host)
     fun disconnect() = c.connection.disconnect()
     fun forget(host: HostDevice) = c.hid.forget(host)
+    fun rename(host: HostDevice, name: String) = c.hid.rename(host, name)
     fun discoverableIntent() = c.connection.discoverableIntent()
     fun phoneName(): String? = c.hid.phoneName()
     suspend fun checkSupport() = c.hid.checkSupport()

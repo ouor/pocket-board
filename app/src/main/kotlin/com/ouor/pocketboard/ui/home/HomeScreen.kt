@@ -60,7 +60,9 @@ import com.ouor.pocketboard.ui.components.SettingGroup
 import com.ouor.pocketboard.ui.components.SettingRow
 import com.ouor.pocketboard.ui.components.StatusBadge
 import com.ouor.pocketboard.ui.components.WarningCard
+import com.ouor.pocketboard.ui.components.NOT_WINDOWS_NOTE
 import com.ouor.pocketboard.ui.components.badge
+import com.ouor.pocketboard.ui.components.mayNotBeWindows
 import com.ouor.pocketboard.ui.components.progressLabel
 import com.ouor.pocketboard.ui.components.reason
 import com.ouor.pocketboard.ui.components.whenLabel
@@ -186,6 +188,7 @@ private fun HostHeroCard(hid: HidState, hosts: List<HostDevice>, onPrimary: (Hom
             StatusBadge(hid.badge(hosts.isNotEmpty()))
             val detail = hid.reason() ?: host?.lastConnectedAt?.takeIf { current == null }?.let { "마지막 연결 ${context.whenLabel(it)}" }
             detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (host?.mayNotBeWindows == true) Text(NOT_WINDOWS_NOTE, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (action != HomeAction.None) PrimaryButton(label, { onPrimary(action) }, Modifier.padding(top = Space.s))
             if (hid is HidState.Reconnecting && !hid.repairLikely) {
                 TextButton(onTroubleshoot, Modifier.fillMaxWidth()) { Text("연결 문제 해결") }

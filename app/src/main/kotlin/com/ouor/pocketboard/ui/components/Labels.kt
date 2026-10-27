@@ -100,6 +100,13 @@ fun ModelState.progressLabel(): String? = when (this) {
     else -> null
 }
 
+/** E16: 기기 종류로 보아 Windows PC 가 아닐 수 있음. 모름(UNKNOWN)이면 안내하지 않는다(hid.md §3.4). */
+val com.ouor.pocketboard.core.hid.HostDevice.mayNotBeWindows: Boolean
+    get() = kind == com.ouor.pocketboard.core.hid.HostKind.PHONE ||
+        kind == com.ouor.pocketboard.core.hid.HostKind.AUDIO_VIDEO || kind == com.ouor.pocketboard.core.hid.HostKind.OTHER
+
+const val NOT_WINDOWS_NOTE = "Windows 외 기기일 수 있어 동작이 보장되지 않아요"
+
 /** 연결 상태 배지(C1). [label]은 배지·타일·알림이 같은 단어를 쓴다(design-system §9). */
 enum class BadgeKind { Connected, Connecting, Retrying, Idle, Problem, NotSetUp }
 

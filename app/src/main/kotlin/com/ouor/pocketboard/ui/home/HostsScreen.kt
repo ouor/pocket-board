@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Laptop
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,6 +18,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +45,8 @@ import com.ouor.pocketboard.ui.components.PrimaryButton
 import com.ouor.pocketboard.ui.components.SettingGroup
 import com.ouor.pocketboard.ui.components.StatusBadge
 import com.ouor.pocketboard.ui.components.whenLabel
+import com.ouor.pocketboard.ui.components.NOT_WINDOWS_NOTE
+import com.ouor.pocketboard.ui.components.mayNotBeWindows
 import com.ouor.pocketboard.ui.theme.PocketTheme
 import com.ouor.pocketboard.ui.theme.Space
 import kotlinx.coroutines.launch
@@ -58,6 +63,7 @@ fun HostsRoute(vm: AppViewModel, go: (Any) -> Unit, onBack: () -> Unit) {
         hid, hosts,
         onConnect = vm::connect,
         onDisconnect = vm::disconnect,
+        onRename = vm::rename,
         onForget = {
             vm.forget(it)
             scope.launch { snackbar.showSnackbar("목록에서 지웠어요. PC와 폰의 블루투스 설정에서도 지워 주세요") }
@@ -83,6 +89,7 @@ fun HostsScreen(
     hosts: List<HostDevice>,
     onConnect: (HostDevice) -> Unit,
     onDisconnect: () -> Unit,
+    onRename: (HostDevice, String) -> Unit,
     onForget: (HostDevice) -> Unit,
     onAdd: () -> Unit,
     onBack: () -> Unit,
@@ -90,6 +97,7 @@ fun HostsScreen(
     val context = LocalContext.current
     var selected by remember { mutableStateOf<HostDevice?>(null) }
     var forget by remember { mutableStateOf<HostDevice?>(null) }
+    var renaming by remember { mutableStateOf<HostDevice?>(null) }
     PageScaffold("PC 목록", onBack, bottom = { PrimaryButton("새 PC 추가하기", onAdd) }) {
         if (hosts.isEmpty()) {
             Text("아직 연결한 PC가 없어요", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -100,6 +108,7 @@ fun HostsScreen(
                     val detail = buildList {
                         if (badge?.kind == BadgeKind.Connected) add("지금 연결됨") else host.lastConnectedAt?.let { add(context.whenLabel(it)) }
                         if (i == 0) add("자동 재연결")
+                        if (host.mayNotBeWindows) add(NOT_WINDOWS_NOTE) // E16
                     }.joinToString(" · ")
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -123,10 +132,12 @@ fun HostsScreen(
                 Text(host.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = Space.gutter, vertical = Space.s))
                 if (active) SheetAction(Icons.Rounded.LinkOff, "이 PC에서 연결 끊기") { selected = null; onDisconnect() }
                 else SheetAction(Icons.Rounded.Link, "연결") { selected = null; onConnect(host) }
+                SheetAction(Icons.Rounded.Edit, "이름 바꾸기") { selected = null; renaming = host }
                 SheetAction(Icons.Rounded.Delete, "목록에서 삭제", destructive = true) { selected = null; forget = host }
             }
         }
     }
+    renaming?.let { host -> RenameDialog(host, onDismiss = { renaming = null }) { onRename(host, it) } }
     forget?.let { host ->
         AlertDialog(
             onDismissRequest = { forget = null },
@@ -136,6 +147,24 @@ fun HostsScreen(
             dismissButton = { TextButton({ forget = null }) { Text("취소") } },
         )
     }
+}
+
+/** F31: 앱 목록의 표시 이름만 바꾼다. 비우면 기기 이름으로 돌아간다(hid.rename). */
+@Composable
+private fun RenameDialog(host: HostDevice, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var text by rememberSaveable { mutableStateOf(host.name) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("이름 바꾸기") },
+        text = {
+            OutlinedTextField(
+                text, { text = it }, singleLine = true, label = { Text("PC 이름") },
+                supportingText = { Text("비우면 PC가 알려 준 이름으로 돌아가요") },
+            )
+        },
+        confirmButton = { TextButton({ onDismiss(); onSave(text.trim()) }) { Text("저장") } },
+        dismissButton = { TextButton(onDismiss) { Text("취소") } },
+    )
 }
 
 @Composable
@@ -153,6 +182,6 @@ fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, text: Str
 @Composable
 private fun HostsPreview() = PocketTheme {
     val a = HostDevice("1", "내 노트북", System.currentTimeMillis())
-    val b = HostDevice("2", "회사 PC", System.currentTimeMillis() - 86_400_000)
-    HostsScreen(HidState.Connected(a), listOf(a, b), {}, {}, {}, {}, {})
+    val b = HostDevice("2", "거실 TV", System.currentTimeMillis() - 86_400_000, kind = com.ouor.pocketboard.core.hid.HostKind.AUDIO_VIDEO)
+    HostsScreen(HidState.Connected(a), listOf(a, b), {}, {}, { _, _ -> }, {}, {}, {})
 }

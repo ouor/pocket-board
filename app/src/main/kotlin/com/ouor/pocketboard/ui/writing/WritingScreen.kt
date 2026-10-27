@@ -8,7 +8,9 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemGestures
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -101,6 +104,7 @@ fun WritingRoute(
 private fun WritingCanvas(model: ModelState) {
     val writing: WritingViewModel = viewModel()
     val notice by writing.notice.collectAsStateWithLifecycle()
+    val preview by writing.session.preview.collectAsStateWithLifecycle()
     LifecycleStartEffect(writing) {
         writing.onStart()
         onStopOrDispose { writing.onStop() }
@@ -124,6 +128,7 @@ private fun WritingCanvas(model: ModelState) {
             modifier = Modifier.fillMaxSize().onSizeChanged { size = it },
         )
         NoticeLine(notice, model)
+        PreviewLine(preview)
     }
 }
 
@@ -141,6 +146,18 @@ private fun androidx.compose.foundation.layout.BoxScope.NoticeLine(notice: Writi
         text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.pocket.inkDim, maxLines = 1,
         modifier = Modifier.align(Alignment.TopCenter).padding(top = 56.dp),
     )
+}
+
+/** F25 미리보기(design-system §2.3): 아래쪽 1/4 중앙, headlineSmall, ink.dimStrong, 1줄 앞쪽 생략. null 이면 없음. */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.PreviewLine(text: String?) {
+    if (text.isNullOrEmpty()) return
+    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.25f), contentAlignment = Alignment.Center) {
+        Text(
+            text, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.pocket.inkDimStrong,
+            maxLines = 1, overflow = TextOverflow.StartEllipsis, modifier = Modifier.padding(horizontal = 24.dp),
+        )
+    }
 }
 
 /** 몰입 모드, 화면 켜짐(A11), 창 밝기 최저(A7). 나가면 모두 되돌린다. 세로 고정은 매니페스트. */
@@ -191,7 +208,10 @@ fun TalkBackNotice(onHome: () -> Unit) {
 @Preview
 @Composable
 private fun WritingNoticePreview() = PocketTheme {
-    Box(Modifier.fillMaxSize().background(Color.Black)) { NoticeLine(WritingNotice.MODEL_DOWNLOADING, ModelState.Downloading(1, 2)) }
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        NoticeLine(WritingNotice.MODEL_DOWNLOADING, ModelState.Downloading(1, 2))
+        PreviewLine("안녕하세요 오늘 회의는 slack에")
+    }
 }
 
 @Preview

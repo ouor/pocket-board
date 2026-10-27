@@ -61,6 +61,9 @@ fun PairingRoute(
     val phone = remember { vm.phoneName() ?: "이 폰" }
     // 새 PC 추가(온보딩·다시 페어링 아님)에서는 목록에 이미 있던 PC 가 (자동 재)연결돼도 완료로 치지 않는다
     val knownAtEntry = rememberSaveable { ArrayList(vm.hosts.value.map { it.address }) }
+    // hid.md §5.1: 다른 PC 와 연결된 채 새 PC 를 추가하면 HID 가 기존 연결을 넘겨준다(UI 는 아무것도 부르지 않음)
+    val handoverFrom = rememberSaveable { (vm.hid.value as? HidState.Connected)?.host?.name.orEmpty() }
+        .takeIf { it.isNotEmpty() && !onboarding && !repair }
     fun isNew(h: HidState) = h is HidState.Connected && (onboarding || repair || h.host.address !in knownAtEntry)
     var discover by rememberSaveable { mutableStateOf(Discover.NotAsked) }
     var deadline by rememberSaveable { mutableLongStateOf(0L) }
@@ -93,6 +96,7 @@ fun PairingRoute(
         newlyConnected = (hid as? HidState.Connected)?.host?.takeIf { isNew(hid) },
         waiting = discover == Discover.Waiting && remainingSec > 0,
         declined = discover == Discover.Declined,
+        handoverFrom = handoverFrom,
         remainingSec = remainingSec,
         phone = phone,
         onboarding = onboarding,
@@ -113,6 +117,7 @@ fun PairingScreen(
     waiting: Boolean,
     declined: Boolean,
     remainingSec: Long,
+    handoverFrom: String? = null,
     phone: String,
     onboarding: Boolean,
     repair: Boolean,
@@ -157,6 +162,9 @@ fun PairingScreen(
         },
     ) {
         WarningCard("PC에 한국어 입력기가 있어야 한글이 들어가요", title = "한국어 입력기 확인")
+        if (handoverFrom != null) {
+            TipCard("새 PC가 연결되면 지금 연결된 \"$handoverFrom\"와는 끊겨요. 15초 안에 새 PC가 연결되지 않으면 원래 PC로 다시 연결해요.", title = "지금 PC는 잠시 끊길 수 있어요")
+        }
         if (repair) TipCard("PC의 블루투스 목록에서 \"$phone\"을 먼저 제거해 주세요.")
         StepCard(1, "Windows 설정을 열어요", "시작 버튼 → 설정(톱니바퀴)", Icons.Rounded.Settings, "설정")
         StepCard(2, "블루투스 및 장치 → 장치 추가", "왼쪽 메뉴에서 블루투스 및 장치를 고른 뒤 장치 추가를 눌러요", Icons.Rounded.Bluetooth, "장치 추가")
@@ -168,11 +176,11 @@ fun PairingScreen(
 @Preview(heightDp = 900)
 @Composable
 private fun PairingWaitingPreview() = PocketTheme {
-    PairingScreen(HidState.Ready, null, true, false, 272, "Galaxy S23", true, false, ModelState.Downloading(1, 2), {}, {}, {}, {}, {})
+    PairingScreen(HidState.Ready, null, true, false, 272, null, "Galaxy S23", true, false, ModelState.Downloading(1, 2), {}, {}, {}, {}, {})
 }
 
 @Preview(heightDp = 900)
 @Composable
 private fun PairingRepairPreview() = PocketTheme {
-    PairingScreen(HidState.BluetoothOff, null, false, false, 0, "Galaxy S23", false, true, null, {}, {}, {}, {}, {})
+    PairingScreen(HidState.BluetoothOff, null, false, false, 0, "내 노트북", "Galaxy S23", false, true, null, {}, {}, {}, {}, {})
 }
