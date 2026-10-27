@@ -22,7 +22,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
@@ -44,6 +46,8 @@ class WritingSession(
     private val gestureConfig: StateFlow<GestureConfig>,
     private val emptySendEnter: () -> Boolean,
     private val logContacts: () -> Boolean,
+    /** F25 미리보기 설정. 꺼져 있으면 미리보기 인식을 하지 않는다. */
+    private val previewEnabled: StateFlow<Boolean>,
     private val newRecognizer: (GestureConfig) -> GestureRecognizer,
     private val scope: CoroutineScope,
     /** `MotionEvent.eventTime` 과 같은 시계(SystemClock.uptimeMillis). */
@@ -63,14 +67,32 @@ class WritingSession(
     private var timer: Job? = null
     private val pointersDown = HashSet<Int>()
     private val jobs = ArrayList<Job>()
+    private var previewJob: Job? = null
+    private var previewed: List<InkItem> = emptyList()
+
+    private val _preview = MutableStateFlow<String?>(null)
+
+    /**
+     * F25(P2): 보내기 전 인식 예상 결과. 설정이 꺼져 있거나 쓴 글씨가 없으면 null.
+     * 버퍼가 바뀌고 [PREVIEW_DEBOUNCE_MS] 동안 더 바뀌지 않으면 한 번 인식한다. 획을 지우거나(B7) 덩어리 지우기·전송으로
+     * 버퍼가 줄면 즉시 null 로 비운 뒤 남은 획으로 다시 계산한다.
+     */
+    val preview: StateFlow<String?> = _preview.asStateFlow()
 
     private data class Surface(val widthDp: Float, val heightDp: Float, val edgeInsetDp: Float)
 
     init {
-        jobs += scope.launch { for (e in events) process(e) }
+        jobs += scope.launch {
+            for (e in events) {
+                if (e is Event.Act && e.action == Action.SEND) previewJob?.cancel() // 전송과 인식을 겹치지 않음
+                process(e)
+                refreshPreview()
+            }
+        }
         jobs += scope.launch { mapping.collect { gestures.setMappedGestures(it.actions.keys) } }
         jobs += scope.launch { gestureConfig.collect { rebuildGestures() } }
         jobs += scope.launch { recognizer.warmUp() }
+        jobs += scope.launch { previewEnabled.collect { previewed = emptyList(); refreshPreview() } }
     }
 
     /** 입력 표면 크기(dp)와 시스템 제스처 인셋(dp)이 정해지거나 바뀔 때(gesture 명세 §2, 판단 4). */
@@ -112,6 +134,7 @@ class WritingSession(
     /** ViewModel 소멸 시. */
     fun close() {
         onLeave()
+        previewJob?.cancel()
         jobs.forEach { it.cancel() }
         events.close()
         recognizer.close()
@@ -150,6 +173,26 @@ class WritingSession(
             screenWidthDp = surface.widthDp,
             screenHeightDp = surface.heightDp,
         )
+    }
+
+    private fun refreshPreview() {
+        val items = buffer.toList()
+        if (!previewEnabled.value || items.isEmpty()) {
+            previewJob?.cancel()
+            previewed = emptyList()
+            _preview.value = null
+            return
+        }
+        val job = previewJob
+        if (items == previewed && job != null && !job.isCancelled) return // 그대로면 진행 중이거나 이미 계산됨
+        if (items.size < previewed.size) _preview.value = null // 지움: 옛 결과를 남기지 않음
+        previewed = items
+        previewJob?.cancel()
+        previewJob = scope.launch {
+            delay(PREVIEW_DEBOUNCE_MS)
+            val outcome = recognizer.recognize(items, keyInput.preContext())
+            _preview.value = (outcome as? RecognitionOutcome.Text)?.text
+        }
     }
 
     private suspend fun process(e: Event) {
@@ -230,5 +273,10 @@ class WritingSession(
 
     private fun play(p: HapticPattern) {
         haptics.play(p)
+    }
+
+    companion object {
+        /** 마지막 획 뒤 미리보기 인식까지 기다리는 시간. 실기기에서 조정. */
+        const val PREVIEW_DEBOUNCE_MS = 400L
     }
 }

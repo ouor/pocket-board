@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -101,9 +102,30 @@ class WritingSessionTest {
         assertEquals(1, f.hid.warmUps)
     }
 
+    @Test
+    fun preview_afterDebounce_clearedOnSend_andOffByDefault() = runTest {
+        val f = Fixture(this, preview = true)
+        f.stroke(1)
+        runCurrent()
+        assertEquals(null, f.session.preview.value) // 디바운스 전
+        advanceTimeBy(WritingSession.PREVIEW_DEBOUNCE_MS + 1)
+        assertEquals("안녕", f.session.preview.value)
+
+        f.session.perform(Action.SEND)
+        runCurrent()
+        assertEquals(null, f.session.preview.value)
+        assertEquals(listOf(listOf(1L), listOf(1L)), f.ink.recognized) // 미리보기 1회 + 전송 1회
+
+        val off = Fixture(this)
+        off.stroke(1)
+        advanceTimeBy(WritingSession.PREVIEW_DEBOUNCE_MS * 2)
+        assertEquals(null, off.session.preview.value)
+        assertEquals(emptyList<List<Long>>(), off.ink.recognized)
+    }
+
     // --- fakes ---
 
-    private class Fixture(scope: TestScope) {
+    private class Fixture(scope: TestScope, preview: Boolean = false) {
         val keys = FakeKeys()
         val hid = FakeHid(keys)
         val ink = FakeInk()
@@ -120,6 +142,7 @@ class WritingSessionTest {
             gestureConfig = MutableStateFlow(GestureConfig()),
             emptySendEnter = { true },
             logContacts = { false },
+            previewEnabled = MutableStateFlow(preview),
             newRecognizer = { gestures },
             scope = scope.backgroundScope,
             now = { scope.testScheduler.currentTime },

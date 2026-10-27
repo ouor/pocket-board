@@ -85,6 +85,7 @@ class AppContainer(context: Context) {
         gestureConfig = settings.part { it.gesture },
         emptySendEnter = { settings.value.emptySendEnter },
         logContacts = { settings.value.devlogEnabled },
+        previewEnabled = settings.part { it.previewEnabled },
         newRecognizer = ::DefaultGestureRecognizer,
         scope = scope,
         now = SystemClock::uptimeMillis,
