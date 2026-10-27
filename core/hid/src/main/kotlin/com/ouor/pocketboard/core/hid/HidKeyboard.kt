@@ -43,6 +43,12 @@ interface HidKeyboard {
     /** 앱 목록에서만 지운다(A26). 폰의 bond 는 건드리지 않는다. */
     fun forget(host: HostDevice)
 
+    /**
+     * 호스트 별칭(F31, P2). 이후 [hosts]·[HidState]의 [HostDevice.name]은 별칭을 쓴다.
+     * 빈 문자열이면 별칭을 지우고 기기 이름으로 돌아간다. 기본 구현은 아무것도 하지 않는다(하위 호환).
+     */
+    fun rename(host: HostDevice, name: String) {}
+
     /** 무입력 자동 해제 시간(F15). null = 끄지 않음. */
     fun setIdleTimeout(timeout: Duration?)
 
@@ -65,10 +71,16 @@ interface HidKeyboard {
 
 data class HostDevice(
     val address: String,
+    /** 별칭이 있으면 별칭(F31), 없으면 호스트의 블루투스 이름. */
     val name: String,
     /** epoch ms. 연결한 적 없으면 null. */
     val lastConnectedAt: Long?,
+    /** 블루투스 기기 클래스로 본 종류(E16). OS 는 알 수 없다(맥도 COMPUTER). */
+    val kind: HostKind = HostKind.UNKNOWN,
 )
+
+/** 블루투스 major device class 기준. COMPUTER 가 아니면 "Windows 외 기기일 수 있음" 안내 대상. */
+enum class HostKind { COMPUTER, PHONE, AUDIO_VIDEO, OTHER, UNKNOWN }
 
 enum class HidSupport { SUPPORTED, UNSUPPORTED, UNKNOWN }
 

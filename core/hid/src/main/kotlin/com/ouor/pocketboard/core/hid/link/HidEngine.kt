@@ -66,6 +66,7 @@ internal class HidEngine(
 
     private val repairRules = DefaultRules.repair(tuning.repairFailureThreshold)
     private val hostsLoaded = CompletableDeferred<Unit>()
+    private var known = emptyList<StoredHost>() // 진실의 출처. [hosts]는 이것을 HostDevice 로 보인 것
 
     // --- 등록 ---
     private var started = false
@@ -106,7 +107,8 @@ internal class HidEngine(
     init {
         port.setListener(this)
         scope.launch {
-            _hosts.value = runCatching { store.load() }.getOrDefault(emptyList())
+            known = runCatching { store.load() }.getOrDefault(emptyList())
+            _hosts.value = known.map { it.toDevice(kindOf(it.address)) }
             hostsLoaded.complete(Unit)
         }
     }
@@ -149,12 +151,26 @@ internal class HidEngine(
 
     override fun forget(host: HostDevice) {
         scope.launch {
-            saveHosts(_hosts.value.filter { it.address != host.address })
+            saveHosts(known.filter { it.address != host.address })
             if (target == host.address && linked == null) {
                 target = null
                 dialJob?.cancel()
                 dialing = false
                 if (registered) _state.value = HidState.Ready
+            }
+        }
+    }
+
+    override fun rename(host: HostDevice, name: String) {
+        scope.launch {
+            val alias = name.trim().ifEmpty { null }
+            saveHosts(known.map { if (it.address == host.address) it.copy(alias = alias) else it })
+            // 화면이 들고 있는 상태의 호스트 이름도 바꾼다
+            when (val s = _state.value) {
+                is HidState.Connecting -> if (s.host.address == host.address) setState(s.copy(host = hostOf(host.address)))
+                is HidState.Connected -> if (s.host.address == host.address) setState(s.copy(host = hostOf(host.address)))
+                is HidState.Reconnecting -> if (s.host.address == host.address) setState(s.copy(host = hostOf(host.address)))
+                else -> Unit
             }
         }
     }
@@ -293,7 +309,7 @@ internal class HidEngine(
         // plugged 는 다른 프로필(차량 오디오 등)일 수 있어 HID 링크가 있을 때만 믿는다
         val already = plugged?.takeIf { it in up } ?: up.firstOrNull()
         if (already != null) return linkUp(already)
-        val t = target ?: _hosts.value.firstOrNull()?.address
+        val t = target ?: known.firstOrNull()?.address
         if (t == null) return setState(HidState.Ready)
         resetFailures()
         dial(t)
@@ -333,11 +349,10 @@ internal class HidEngine(
         scope.launch {
             if (!started || !registered) return@launch
             when (state) {
-                LinkState.CONNECTED -> when {
-                    linked == null -> linkUp(address) // 들어온 연결(새 페어링 포함)도 받는다
-                    linked == address -> Unit
-                    address == target -> { leaving += linked!!; port.disconnect(linked!!); linkDown(); linkUp(address) }
-                    else -> { leaving += address; port.disconnect(address) } // 한 번에 호스트 하나
+                // 한 번에 호스트 하나. 새로 올라온 링크(선택한 호스트, 새로 페어링한 호스트)가 이긴다
+                LinkState.CONNECTED -> if (linked != address) {
+                    linked?.let { old -> leaving += old; port.disconnect(old); linkDown() }
+                    linkUp(address)
                 }
                 LinkState.DISCONNECTED -> when {
                     leaving.remove(address) -> Unit
@@ -366,8 +381,9 @@ internal class HidEngine(
         connectedAt = clock()
         lastReportAt = null
         _leds.value = null
-        val host = HostDevice(address, port.deviceName(address), wallClock())
-        saveHosts(listOf(host) + _hosts.value.filter { it.address != address })
+        val alias = known.firstOrNull { it.address == address }?.alias
+        saveHosts(listOf(StoredHost(address, port.deviceName(address), alias, wallClock())) + known.filter { it.address != address })
+        val host = hostOf(address)
         setState(HidState.Connecting(host))
         settleJob?.cancel()
         settleJob = scope.launch {
@@ -407,11 +423,15 @@ internal class HidEngine(
     private fun repairLikely(): Boolean =
         repairRules.firstMatch(RepairContext(bondLost, failures)) { false }.value
 
-    private fun hostOf(address: String) =
-        _hosts.value.firstOrNull { it.address == address } ?: HostDevice(address, port.deviceName(address), null)
+    private fun kindOf(address: String) = hostKindOf(port.majorDeviceClass(address))
 
-    private fun saveHosts(list: List<HostDevice>) {
-        _hosts.value = list
+    private fun hostOf(address: String) =
+        (known.firstOrNull { it.address == address } ?: StoredHost(address, port.deviceName(address), null, null))
+            .toDevice(kindOf(address))
+
+    private fun saveHosts(list: List<StoredHost>) {
+        known = list
+        _hosts.value = list.map { it.toDevice(kindOf(it.address)) }
         scope.launch { runCatching { store.save(list) } }
     }
 
@@ -438,6 +458,27 @@ internal class HidEngine(
             } else if (_state.value == HidState.BluetoothOff) {
                 regFailures = 0
                 register()
+            }
+        }
+    }
+
+    /**
+     * 다른 호스트와 연결된 채 새 호스트를 페어링했다. 스택이 HID 연결을 한 호스트만 받을 수 있으므로
+     * 기존 링크를 비켜 새 호스트의 연결을 기다린다. 오지 않으면 기존 호스트로 돌아간다.
+     */
+    override fun onBonded(address: String) {
+        scope.launch {
+            val old = linked ?: return@launch
+            if (!started || address == old || known.any { it.address == address }) return@launch
+            leaving += old
+            port.disconnect(old)
+            linkDown() // 앱이 끊은 것이므로 LostUnexpectedly 없음
+            target = null
+            setState(HidState.Ready)
+            dialJob?.cancel()
+            dialJob = scope.launch {
+                delay(tuning.connectTimeoutMs)
+                if (started && registered && linked == null) { resetFailures(); dial(old) }
             }
         }
     }

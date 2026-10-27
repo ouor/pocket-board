@@ -110,6 +110,8 @@ internal class AndroidHidPort(
 
     override fun deviceName(address: String): String = guard { device(address)?.name } ?: address
 
+    override fun majorDeviceClass(address: String): Int? = guard { device(address)?.bluetoothClass?.majorDeviceClass }
+
     override fun sendReport(address: String, reportId: Int, data: ByteArray): Boolean =
         guard { device(address)?.let { proxy?.sendReport(it, reportId, data) } } ?: false
 
@@ -165,9 +167,12 @@ internal class AndroidHidPort(
                         BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> l.onBluetoothOn(false)
                     }
                 BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
-                    if (intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR) != BluetoothDevice.BOND_NONE) return
-                    IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-                        ?.let { l.onBondLost(it.address) }
+                    val address = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                        ?.address ?: return
+                    when (intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)) {
+                        BluetoothDevice.BOND_NONE -> l.onBondLost(address)
+                        BluetoothDevice.BOND_BONDED -> l.onBonded(address)
+                    }
                 }
             }
         }

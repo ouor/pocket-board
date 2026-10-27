@@ -6,6 +6,7 @@ import com.ouor.pocketboard.core.common.key.KeyUnit
 import com.ouor.pocketboard.core.hid.HidEvent
 import com.ouor.pocketboard.core.hid.HidState
 import com.ouor.pocketboard.core.hid.HostDevice
+import com.ouor.pocketboard.core.hid.HostKind
 import com.ouor.pocketboard.core.hid.SendResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -50,6 +51,8 @@ class HidEngineTest {
         override fun disconnect(address: String) { if (linked.remove(address)) l.onConnectionState(address, LinkState.DISCONNECTED) }
         override fun linkedHosts() = linked.toList()
         override fun deviceName(address: String) = "PC-$address"
+        val classes = mutableMapOf<String, Int>()
+        override fun majorDeviceClass(address: String) = classes[address]
         override fun sendReport(address: String, reportId: Int, data: ByteArray): Boolean {
             if (address !in linked) return false
             val isKey = data.any { it != 0.toByte() }
@@ -61,16 +64,16 @@ class HidEngineTest {
         fun drop(address: String) { linked.remove(address); l.onConnectionState(address, LinkState.DISCONNECTED) }
     }
 
-    private class FakeStore(var saved: List<HostDevice>) : HostStore {
+    private class FakeStore(var saved: List<StoredHost>) : HostStore {
         override suspend fun load() = saved
-        override suspend fun save(hosts: List<HostDevice>) { saved = hosts }
+        override suspend fun save(hosts: List<StoredHost>) { saved = hosts }
     }
 
-    private val hostA = HostDevice("A", "PC-A", 1L)
+    private val hostA = StoredHost("A", "PC-A", null, 1L)
     private fun press(usage: Int, mods: Int = 0) = KeyUnit(listOf(KeyStep.Press(usage, mods)), countsAsChar = true)
 
-    private fun TestScope.engine(port: FakePort, hosts: List<HostDevice> = emptyList()) = HidEngine(
-        port, FakeStore(hosts), backgroundScope, StandardTestDispatcher(testScheduler),
+    private fun TestScope.engine(port: FakePort, hosts: List<StoredHost> = emptyList(), store: FakeStore = FakeStore(hosts)) = HidEngine(
+        port, store, backgroundScope, StandardTestDispatcher(testScheduler),
         clock = { testScheduler.currentTime }, wallClock = { 1_000L },
     )
 
@@ -188,5 +191,47 @@ class HidEngineTest {
         e.start()
         advanceTimeBy(5_000)
         assertEquals(HidState.Unavailable(HidState.Why.OCCUPIED_BY_OTHER_APP), e.state.value)
+    }
+
+    @Test fun `rename shows the alias everywhere and keeps it across reconnects`() = runTest {
+        val port = FakePort().apply { reachable += "A"; classes["A"] = 0x0100 }
+        val store = FakeStore(listOf(hostA))
+        val e = engine(port, store = store)
+        e.start()
+        advanceTimeBy(2_000)
+        e.rename(e.hosts.value.first(), " 내 노트북 ")
+        runCurrent()
+        assertEquals(HostDevice("A", "내 노트북", 1_000L, HostKind.COMPUTER), e.hosts.value.first())
+        assertEquals("내 노트북", (e.state.value as HidState.Connected).host.name)
+        assertEquals("내 노트북", store.saved.first().alias)
+        port.drop("A") // 재연결해도 별칭 유지
+        advanceTimeBy(2_000)
+        assertEquals("내 노트북", e.hosts.value.first().name)
+        e.rename(e.hosts.value.first(), "")
+        runCurrent()
+        assertEquals("PC-A", e.hosts.value.first().name)
+    }
+
+    @Test fun `pairing a new host while connected hands the link over quietly`() = runTest {
+        val port = FakePort()
+        val e = connected(port)
+        val ev = events(e)
+        e.onBonded("B") // 새 PC 와 페어링 완료
+        runCurrent()
+        assertEquals(HidState.Ready, e.state.value)
+        port.reachable += "B"
+        port.connect("B") // 새 PC 가 HID 연결을 걸어 옴
+        advanceTimeBy(2_000)
+        assertEquals("B", (e.state.value as HidState.Connected).host.address)
+        assertEquals(listOf("B", "A"), e.hosts.value.map { it.address })
+        assertEquals(listOf<HidEvent>(HidEvent.Connected(e.hosts.value.first())), ev)
+    }
+
+    @Test fun `host kind comes from the bluetooth major class`() {
+        assertEquals(HostKind.COMPUTER, hostKindOf(0x0100))
+        assertEquals(HostKind.PHONE, hostKindOf(0x0200))
+        assertEquals(HostKind.AUDIO_VIDEO, hostKindOf(0x0400))
+        assertEquals(HostKind.UNKNOWN, hostKindOf(null))
+        assertEquals(HostKind.OTHER, hostKindOf(0x0500))
     }
 }
