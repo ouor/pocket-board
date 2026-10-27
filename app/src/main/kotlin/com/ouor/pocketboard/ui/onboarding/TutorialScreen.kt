@@ -118,6 +118,8 @@ fun TutorialScreen(
                     )
                     SettingGroup { SettingRow("진동", RowKind.Toggle, icon = Icons.Rounded.Vibration, checked = hapticsOn) { onHaptics(!hapticsOn) } }
                     Text("설정 > 진동에서도 바꿀 수 있어요", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // B5: 쓰기 화면엔 나가기 버튼이 없으니 여기서 한 번 알려 준다
+                    com.ouor.pocketboard.ui.components.TipCard("쓰기 화면에서 나가려면 화면 가장자리에서 뒤로 가기를 두 번 해요. 연결은 알림에서 끊을 수 있어요.")
                 }
             }
         }

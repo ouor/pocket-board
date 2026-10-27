@@ -175,7 +175,7 @@ private fun GestureSheet(action: Action, mapping: GestureMapping, onAssign: (Ges
                     leadingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.s)) {
                             Checkbox(checked, onCheckedChange = null, enabled = !locked)
-                            GestureGlyph(g, 28.dp)
+                            GestureGlyph(g, 28.dp, description = null)
                         }
                     },
                     headlineContent = { Text(g.label, style = MaterialTheme.typography.bodyLarge) },

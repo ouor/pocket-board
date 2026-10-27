@@ -44,8 +44,9 @@ import com.ouor.pocketboard.ui.theme.PocketTheme
  * C2 제스처 글리프: 손가락 수 = 점 개수, 탭 횟수 = 동심원 수, 스와이프 = 화살표.
  * [animate]는 튜토리얼(SC07) 전용 1.2초 루프.
  */
+/** [description] null = 장식(옆 글자가 같은 이름을 읽어 줄 때). */
 @Composable
-fun GestureGlyph(gesture: Gesture, size: Dp = 24.dp, animate: Boolean = false, modifier: Modifier = Modifier) {
+fun GestureGlyph(gesture: Gesture, size: Dp = 24.dp, animate: Boolean = false, description: String? = gesture.label, modifier: Modifier = Modifier) {
     val bg = MaterialTheme.colorScheme.secondaryContainer
     val fg = MaterialTheme.colorScheme.onSecondaryContainer
     val progress = if (animate) {
@@ -54,7 +55,7 @@ fun GestureGlyph(gesture: Gesture, size: Dp = 24.dp, animate: Boolean = false, m
         )
         t
     } else 1f
-    Canvas(modifier.size(size).semantics { contentDescription = gesture.label }) {
+    Canvas(modifier.size(size).then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)) {
         val d = this.size.minDimension
         drawCircle(bg)
         val stroke = Stroke(width = d * 0.04f, cap = StrokeCap.Round)
@@ -105,7 +106,7 @@ fun HapticNotation(action: Action, hapticsOn: Boolean = true) {
         action.haptic.notation,
         style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.alpha(if (hapticsOn) 1f else 0.38f).semantics { contentDescription = "진동 ${action.haptic.notation}" },
+        modifier = Modifier.alpha(if (hapticsOn) 1f else 0.38f).semantics { contentDescription = "진동 ${action.haptic.spoken}" },
     )
 }
 
@@ -121,7 +122,7 @@ fun GestureActionRow(action: Action, mapping: GestureMapping, hapticsOn: Boolean
         modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
         leadingContent = {
             Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
-                gestures.take(if (onClick != null) 3 else 1).forEach { GestureGlyph(it, 28.dp) }
+                gestures.take(if (onClick != null) 3 else 1).forEach { GestureGlyph(it, 28.dp, description = null) }
                 if (gestures.isEmpty()) GestureGlyphEmpty()
             }
         },

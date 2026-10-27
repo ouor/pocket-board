@@ -241,7 +241,7 @@ fun PracticeScreen(
             TopAppBar(
                 title = { Text("연습", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = { BackButton(onBack) },
-                actions = { StatusBadge(Badge(BadgeKind.Idle, "PC로 안 보내요"), Modifier.padding(end = Space.l)) },
+                actions = { StatusBadge(Badge(BadgeKind.Idle, "PC로 안 보내요"), Modifier.padding(end = Space.l), spokenPrefix = "") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },

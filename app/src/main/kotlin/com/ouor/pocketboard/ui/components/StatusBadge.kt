@@ -32,7 +32,7 @@ import com.ouor.pocketboard.ui.theme.pocket
 
 /** C1 연결 상태 배지. 색만으로 구분하지 않고 점/아이콘 + 글자(design-system §2.2). */
 @Composable
-fun StatusBadge(badge: Badge, modifier: Modifier = Modifier) {
+fun StatusBadge(badge: Badge, modifier: Modifier = Modifier, spokenPrefix: String = "연결 상태: ") {
     val p = MaterialTheme.pocket
     val color = when (badge.kind) {
         BadgeKind.Connected -> p.connected
@@ -44,7 +44,7 @@ fun StatusBadge(badge: Badge, modifier: Modifier = Modifier) {
         color = color.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surfaceContainer),
         shape = MaterialTheme.shapes.small,
         modifier = modifier.clearAndSetSemantics {
-            contentDescription = "연결 상태: ${badge.label}"
+            contentDescription = spokenPrefix + badge.label
             liveRegion = LiveRegionMode.Polite
         },
     ) {

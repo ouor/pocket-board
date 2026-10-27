@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -108,6 +109,7 @@ fun WelcomeScreen(checking: Boolean, onStart: () -> Unit, onPrivacy: () -> Unit)
 
 @Composable
 fun UnsupportedScreen(model: Boolean, onClose: () -> Unit) {
+    BackHandler(onBack = onClose) // 막다른 화면: 뒤로 = 앱 종료(screens SC02)
     BlockedScaffold(
         title = if (model) "이 폰에서는 글씨 인식을 쓸 수 없어요" else "이 폰은 블루투스 키보드로 쓸 수 없어요",
         body = if (model) "글씨 인식에 Google Play 서비스가 필요한데 이 폰에는 없어요."
@@ -190,14 +192,14 @@ fun PermissionScreen(
         SettingGroup {
             SettingRow(
                 "근처 기기(블루투스)", RowKind.Info, supporting = "PC와 키보드로 연결해요", icon = Icons.Rounded.Bluetooth,
-                trailing = if (denied) ({ StatusBadge(Badge(BadgeKind.Problem, "거부됨")) }) else null,
+                trailing = if (denied) ({ StatusBadge(Badge(BadgeKind.Problem, "거부됨"), spokenPrefix = "권한: ") }) else null,
             )
             if (AppPermissions.optional.isNotEmpty() || !onboarding) {
                 SettingRow(
                     "알림 (선택)", RowKind.Info,
                     supporting = if (denied && !notificationsOn) "화면을 끄면 연결 상태를 알림으로 볼 수 없어요" else "화면을 꺼도 연결을 유지하고 있다고 알려 줘요",
                     icon = Icons.Rounded.Notifications,
-                    trailing = if (denied) ({ StatusBadge(if (notificationsOn) Badge(BadgeKind.Connected, "허용됨") else Badge(BadgeKind.Idle, "꺼짐")) }) else null,
+                    trailing = if (denied) ({ StatusBadge(if (notificationsOn) Badge(BadgeKind.Connected, "허용됨") else Badge(BadgeKind.Idle, "꺼짐"), spokenPrefix = "권한: ") }) else null,
                 )
             }
         }

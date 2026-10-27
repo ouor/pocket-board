@@ -59,8 +59,9 @@ fun PairingRoute(
     val hid by vm.hid.collectAsStateWithLifecycle()
     val model by vm.model.collectAsStateWithLifecycle()
     val phone = remember { vm.phoneName() ?: "이 폰" }
-    // 들어올 때 이미 연결돼 있던 호스트(새 호스트 추가 중)는 "새로 연결됨"으로 치지 않는다
-    val connectedAtEntry: String? = rememberSaveable { (vm.hid.value as? HidState.Connected)?.host?.address ?: "" }.ifEmpty { null }
+    // 새 PC 추가(온보딩·다시 페어링 아님)에서는 목록에 이미 있던 PC 가 (자동 재)연결돼도 완료로 치지 않는다
+    val knownAtEntry = rememberSaveable { ArrayList(vm.hosts.value.map { it.address }) }
+    fun isNew(h: HidState) = h is HidState.Connected && (onboarding || repair || h.host.address !in knownAtEntry)
     var discover by rememberSaveable { mutableStateOf(Discover.NotAsked) }
     var deadline by rememberSaveable { mutableLongStateOf(0L) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
@@ -73,15 +74,14 @@ fun PairingRoute(
     val requestDiscoverable = { discoverLauncher.launch(vm.discoverableIntent()) }
 
     LaunchedEffect(Unit) { vm.ensureStarted() }
-    val registered = hid == HidState.Ready || hid is HidState.Connecting || hid is HidState.Reconnecting ||
-        (hid is HidState.Connected && (hid as HidState.Connected).host.address == connectedAtEntry)
+    val registered = hid == HidState.Ready || hid is HidState.Connecting || hid is HidState.Reconnecting || hid is HidState.Connected
     LaunchedEffect(registered) {
         if (registered && discover == Discover.NotAsked) requestDiscoverable()
     }
     LaunchedEffect(hid) {
         val h = hid
         if (h is HidState.Unavailable && h.why == HidState.Why.NO_PERMISSION) onPermission()
-        if (h is HidState.Connected && h.host.address != connectedAtEntry) { delay(1000); onConnected() }
+        if (isNew(h)) { delay(1000); onConnected() } // 연결 진동 —· 뒤 1초
     }
     LaunchedEffect(discover) {
         while (discover == Discover.Waiting) { now = SystemClock.elapsedRealtime(); delay(1000) }
@@ -90,8 +90,9 @@ fun PairingRoute(
 
     PairingScreen(
         hid = hid,
-        newlyConnected = (hid as? HidState.Connected)?.host?.takeIf { it.address != connectedAtEntry },
+        newlyConnected = (hid as? HidState.Connected)?.host?.takeIf { isNew(hid) },
         waiting = discover == Discover.Waiting && remainingSec > 0,
+        declined = discover == Discover.Declined,
         remainingSec = remainingSec,
         phone = phone,
         onboarding = onboarding,
@@ -110,6 +111,7 @@ fun PairingScreen(
     hid: HidState,
     newlyConnected: HostDevice?,
     waiting: Boolean,
+    declined: Boolean,
     remainingSec: Long,
     phone: String,
     onboarding: Boolean,
@@ -146,7 +148,8 @@ fun PairingScreen(
                 }
                 hid == HidState.Registering || hid == HidState.Stopped -> StatusBadge(Badge(BadgeKind.Connecting, "준비 중…"))
                 else -> {
-                    StatusBadge(Badge(BadgeKind.Idle, "찾지 못했어요"))
+                    StatusBadge(Badge(BadgeKind.Idle, if (declined) "검색 허용이 필요해요" else "찾지 못했어요"))
+                    if (declined) Text("허용해야 PC 목록에 폰이 보여요", style = MaterialTheme.typography.bodyMedium)
                     PrimaryButton("다시 기다리기", onWaitAgain)
                 }
             }
@@ -165,11 +168,11 @@ fun PairingScreen(
 @Preview(heightDp = 900)
 @Composable
 private fun PairingWaitingPreview() = PocketTheme {
-    PairingScreen(HidState.Ready, null, true, 272, "Galaxy S23", true, false, ModelState.Downloading(1, 2), {}, {}, {}, {}, {})
+    PairingScreen(HidState.Ready, null, true, false, 272, "Galaxy S23", true, false, ModelState.Downloading(1, 2), {}, {}, {}, {}, {})
 }
 
 @Preview(heightDp = 900)
 @Composable
 private fun PairingRepairPreview() = PocketTheme {
-    PairingScreen(HidState.BluetoothOff, null, false, 0, "Galaxy S23", false, true, null, {}, {}, {}, {}, {})
+    PairingScreen(HidState.BluetoothOff, null, false, false, 0, "Galaxy S23", false, true, null, {}, {}, {}, {}, {})
 }

@@ -59,6 +59,20 @@ val Action.haptic: HapticPattern
         Action.RESYNC -> HapticPattern.RESYNC
     }
 
+/** 화면 낭독기용 햅틱 표기. */
+val HapticPattern.spoken: String
+    get() = when (this) {
+        HapticPattern.SENT -> "짧게 한 번"
+        HapticPattern.ENTER -> "짧게 두 번"
+        HapticPattern.SPACE -> "아주 짧게 한 번"
+        HapticPattern.BACKSPACE -> "아주 짧게 두 번"
+        HapticPattern.CHUNK_DELETE -> "길게 한 번"
+        HapticPattern.RESYNC -> "짧게 세 번"
+        HapticPattern.RECOGNITION_FAILED -> "짧게 한 번, 길게 한 번"
+        HapticPattern.CONNECTED -> "길게 한 번, 짧게 한 번"
+        HapticPattern.DISCONNECTED, HapticPattern.NOT_CONNECTED -> "길게 두 번"
+    }
+
 /** 햅틱 표기(design-system §7.3). 동작 기준이라 재매핑해도 같다. */
 val HapticPattern.notation: String
     get() = when (this) {
