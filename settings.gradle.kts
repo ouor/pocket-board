@@ -24,4 +24,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "pocketboard"
 include(":app")
+include(":core:common")
+include(":core:hid")
+include(":core:keymap")
+include(":core:ink")
+include(":core:gesture")
  
