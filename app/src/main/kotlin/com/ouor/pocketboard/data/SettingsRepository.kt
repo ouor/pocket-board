@@ -17,6 +17,7 @@ import com.ouor.pocketboard.core.gesture.HapticSettings
 import com.ouor.pocketboard.core.gesture.HapticStrength
 import com.ouor.pocketboard.core.ink.InkSettings
 import com.ouor.pocketboard.core.ink.SegmentationMode
+import com.ouor.pocketboard.core.ink.rules.InkConfig
 import com.ouor.pocketboard.core.keymap.CommitMethod
 import com.ouor.pocketboard.core.keymap.HostOs
 import com.ouor.pocketboard.core.keymap.ImeToggleKey
@@ -65,6 +66,13 @@ internal object SettingsCodec {
     private val COMMIT = stringPreferencesKey("keymap_commit")
     private val LATIN = stringPreferencesKey("keymap_latin")
     private val SEGMENTATION = stringPreferencesKey("ink_segmentation")
+    private val INK_RESTART_PAUSE = longPreferencesKey("ink_restart_pause_ms")
+    private val INK_RESTART_OVERLAP = floatPreferencesKey("ink_restart_overlap_ratio")
+    private val INK_RESTART_MARGIN = floatPreferencesKey("ink_restart_margin_ratio")
+    private val INK_RIGHT_OF_GAP = floatPreferencesKey("ink_right_of_gap_ratio")
+    private val INK_RELAYOUT_GAP = floatPreferencesKey("ink_relayout_gap_ratio")
+    private val INK_MIN_CHAR_SIZE = floatPreferencesKey("ink_min_char_size_dp")
+    private val INK_MAX_HYPOTHESIS = intPreferencesKey("ink_max_hypothesis_calls")
     private val TAP_SLOP = floatPreferencesKey("gesture_tap_slop_dp")
     private val TAP_MAX = longPreferencesKey("gesture_tap_max_ms")
     private val MULTI_TAP_GAP = longPreferencesKey("gesture_multi_tap_gap_ms")
@@ -81,6 +89,7 @@ internal object SettingsCodec {
         val d = AppSettings()
         val k = d.keymap
         val g = d.gesture
+        val i = d.ink.config
         return AppSettings(
             onboardingDone = p[ONBOARDING_DONE] ?: d.onboardingDone,
             idleTimeoutMin = p[IDLE_TIMEOUT_MIN] ?: d.idleTimeoutMin,
@@ -96,7 +105,19 @@ internal object SettingsCodec {
                 commit = CommitMethod.entries.find { it.id == p[COMMIT] } ?: k.commit,
                 latin = LatinMethod.entries.find { it.id == p[LATIN] } ?: k.latin,
             ),
-            ink = InkSettings(SegmentationMode.entries.find { it.id == p[SEGMENTATION] } ?: d.ink.segmentation),
+            // 범위 밖 값은 InkConfig 생성 시 예외(ink.md §3.1)이므로 읽을 때 범위로 자른다
+            ink = InkSettings(
+                segmentation = SegmentationMode.entries.find { it.id == p[SEGMENTATION] } ?: d.ink.segmentation,
+                config = InkConfig(
+                    minCharSize = (p[INK_MIN_CHAR_SIZE] ?: i.minCharSize).coerceIn(InkRanges.minCharSize),
+                    rightOfGapRatio = (p[INK_RIGHT_OF_GAP] ?: i.rightOfGapRatio).coerceIn(InkRanges.rightOfGapRatio),
+                    restartOverlapRatio = (p[INK_RESTART_OVERLAP] ?: i.restartOverlapRatio).coerceIn(InkRanges.ratio),
+                    restartMarginRatio = (p[INK_RESTART_MARGIN] ?: i.restartMarginRatio).coerceIn(InkRanges.ratio),
+                    restartPauseMs = (p[INK_RESTART_PAUSE] ?: i.restartPauseMs).coerceIn(InkRanges.restartPauseMs),
+                    relayoutGapRatio = (p[INK_RELAYOUT_GAP] ?: i.relayoutGapRatio).coerceIn(InkRanges.ratio),
+                    maxHypothesisCalls = (p[INK_MAX_HYPOTHESIS] ?: i.maxHypothesisCalls).coerceIn(InkRanges.maxHypothesisCalls),
+                ),
+            ),
             gesture = GestureConfig(
                 tapSlopDp = p[TAP_SLOP] ?: g.tapSlopDp,
                 tapMaxMs = p[TAP_MAX] ?: g.tapMaxMs,
@@ -125,6 +146,13 @@ internal object SettingsCodec {
         p[COMMIT] = s.keymap.commit.id
         p[LATIN] = s.keymap.latin.id
         p[SEGMENTATION] = s.ink.segmentation.id
+        p[INK_RESTART_PAUSE] = s.ink.config.restartPauseMs
+        p[INK_RESTART_OVERLAP] = s.ink.config.restartOverlapRatio
+        p[INK_RESTART_MARGIN] = s.ink.config.restartMarginRatio
+        p[INK_RIGHT_OF_GAP] = s.ink.config.rightOfGapRatio
+        p[INK_RELAYOUT_GAP] = s.ink.config.relayoutGapRatio
+        p[INK_MIN_CHAR_SIZE] = s.ink.config.minCharSize
+        p[INK_MAX_HYPOTHESIS] = s.ink.config.maxHypothesisCalls
         p[TAP_SLOP] = s.gesture.tapSlopDp
         p[TAP_MAX] = s.gesture.tapMaxMs
         p[MULTI_TAP_GAP] = s.gesture.multiTapGapMs
@@ -137,4 +165,13 @@ internal object SettingsCodec {
         p[DEV_OPTIONS_VISIBLE] = s.devOptionsVisible
         p[DEVLOG_ENABLED] = s.devlogEnabled
     }
+}
+
+/** InkConfig 허용 범위(docs/core/ink.md §3.1). 저장소와 개발자 옵션 화면이 같이 쓴다. */
+object InkRanges {
+    val minCharSize = 8f..96f
+    val rightOfGapRatio = 0f..2f
+    val ratio = 0f..1f
+    val restartPauseMs = 0L..2000L
+    val maxHypothesisCalls = 0..10
 }
