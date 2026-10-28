@@ -12,6 +12,7 @@ import com.ouor.pocketboard.core.common.ink.InkItem
 import com.ouor.pocketboard.core.common.ink.InkPoint
 import com.ouor.pocketboard.core.common.ink.InkStroke
 import com.ouor.pocketboard.core.ink.HandwritingRecognizer
+import com.ouor.pocketboard.core.ink.InkReport
 import com.ouor.pocketboard.core.ink.InkSettings
 import com.ouor.pocketboard.core.ink.ModelState
 import com.ouor.pocketboard.core.ink.RecognitionOutcome
@@ -49,11 +50,16 @@ internal class MlKitHandwritingRecognizer(
         }
     }
 
-    override suspend fun recognize(items: List<InkItem>, preContext: String): RecognitionOutcome {
+    override suspend fun recognize(items: List<InkItem>, preContext: String) = run(items, preContext, null)
+
+    override suspend fun recognize(items: List<InkItem>, preContext: String, report: (InkReport) -> Unit) = run(items, preContext, report)
+
+    private suspend fun run(items: List<InkItem>, preContext: String, report: ((InkReport) -> Unit)?): RecognitionOutcome {
         if (!ready) return RecognitionOutcome.ModelNotReady
         val s = settings.value   // 전송마다 현재 설정(A36). 규칙 생성 비용은 무시할 만하다
         return withContext(Dispatchers.Default) {
-            InkPipeline(this@MlKitHandwritingRecognizer, s.config, defaultInkRules(s.config)) { Log.i(SEGMENT_TAG, it) }.recognize(items, preContext, s.segmentation)
+            InkPipeline(this@MlKitHandwritingRecognizer, s.config, defaultInkRules(s.config)) { Log.i(SEGMENT_TAG, it) }
+                .recognize(items, preContext, s.segmentation, report)
         }
     }
 

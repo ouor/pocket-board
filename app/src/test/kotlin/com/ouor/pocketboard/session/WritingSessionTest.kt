@@ -240,7 +240,7 @@ class WritingSessionTest {
             mapping = MutableStateFlow(GestureMapping.DEFAULT),
             gestureConfig = MutableStateFlow(GestureConfig()),
             emptySendEnter = { true },
-            logContacts = { false },
+            devlogEnabled = { false },
             previewEnabled = MutableStateFlow(preview),
             newRecognizer = newRecognizer ?: { gestures },
             scope = scope.backgroundScope,

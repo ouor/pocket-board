@@ -5,6 +5,11 @@ import com.ouor.pocketboard.core.common.ink.InkStroke
 import com.ouor.pocketboard.core.common.rule.Verdict
 import com.ouor.pocketboard.core.common.rule.firstMatch
 import com.ouor.pocketboard.core.common.rule.transform
+import com.ouor.pocketboard.core.ink.InkMergeCheck
+import com.ouor.pocketboard.core.ink.InkReport
+import com.ouor.pocketboard.core.ink.InkSegmentStep
+import com.ouor.pocketboard.core.ink.InkSplitAttempt
+import com.ouor.pocketboard.core.ink.InkSplitTry
 import com.ouor.pocketboard.core.ink.RecognitionOutcome
 import com.ouor.pocketboard.core.ink.SegmentationMode
 import com.ouor.pocketboard.core.ink.rules.CandidateInput
@@ -45,7 +50,11 @@ class InkPipeline(
 ) {
     private val segmenter = RuleSegmenter(rules.segment)
 
-    suspend fun recognize(items: List<InkItem>, preContext: String, mode: SegmentationMode): RecognitionOutcome {
+    /** [report] 가 있으면 끝에 디버그 보고서를 한 번 넘긴다. null 이면 보고서용 객체를 만들지 않는다. */
+    suspend fun recognize(
+        items: List<InkItem>, preContext: String, mode: SegmentationMode, report: ((InkReport) -> Unit)? = null,
+    ): RecognitionOutcome {
+        val rec = report?.let { SendRecorder(items) }
         val ruleIds = LinkedHashSet<String>()
         val out = StringBuilder()
         val trace = StringBuilder(mode.id)
@@ -56,7 +65,7 @@ class InkPipeline(
         suspend fun flush() {
             if (word.isEmpty()) return
             anyWord = true
-            val text = recognizeWord(word, (preContext + out).takeLast(PRE_CONTEXT_MAX), mode, ruleIds, trace)
+            val text = recognizeWord(word, (preContext + out).takeLast(PRE_CONTEXT_MAX), mode, ruleIds, trace, rec?.word(word))
             if (text.isNotEmpty()) { out.append(text); anyText = true }
             word = ArrayList()
         }
@@ -67,34 +76,47 @@ class InkPipeline(
         }
         flush()
         log(trace.toString())
-        return if ((anyWord && !anyText) || out.isEmpty()) RecognitionOutcome.Empty
+        val outcome = if ((anyWord && !anyText) || out.isEmpty()) RecognitionOutcome.Empty
         else RecognitionOutcome.Text(out.toString(), ruleIds.toList())
+        if (rec != null) report(InkReport(mode.id, config, preContext, rec.words, (outcome as? RecognitionOutcome.Text)?.text.orEmpty(), ruleIds.toList()))
+        return outcome
     }
 
     private suspend fun recognizeWord(
         strokes: List<InkStroke>, pre: String, mode: SegmentationMode, ruleIds: MutableSet<String>, trace: StringBuilder,
+        w: WordRecorder?,
     ): String {
         trace.append(" / n=").append(strokes.size)
-        if (mode == SegmentationMode.RAW) return finish(listOf(strokes), read(strokes, pre), ruleIds)
-        val segmented = segmenter.clusters(strokes).also { trace(it, trace) }
-        val checked = if (mode == SegmentationMode.HYPOTHESIS) HYPOTHESIS_BOUNDARIES else RULES_BOUNDARIES
-        var clusters = mergeHypotheses(segmented, pre, ruleIds, checked)
-        var chosen = read(relayout(clusters, config.relayoutGapRatio, config.minCharSize), pre)
-        split(clusters, chosen.value, pre, trace)?.let { (parts, ruleId) ->
-            val again = read(relayout(parts, config.relayoutGapRatio, config.minCharSize), pre)
-            if (again.value.isNotEmpty()) { clusters = parts; chosen = again; ruleIds += ruleId }
+        var clusters: List<List<InkStroke>>
+        var chosen: Verdict<String>
+        if (mode == SegmentationMode.RAW) {
+            clusters = listOf(strokes)
+            chosen = read(strokes, pre, w)
+        } else {
+            val segmented = segmenter.clusters(strokes).also { trace(it, trace, w) }
+            val checked = if (mode == SegmentationMode.HYPOTHESIS) HYPOTHESIS_BOUNDARIES else RULES_BOUNDARIES
+            clusters = mergeHypotheses(segmented, pre, ruleIds, checked, w)
+            chosen = read(relayout(clusters, config.relayoutGapRatio, config.minCharSize), pre, w)
+            var final = w?.lastRead
+            split(clusters, chosen.value, pre, trace, w)?.let { (parts, ruleId) ->
+                val again = read(relayout(parts, config.relayoutGapRatio, config.minCharSize), pre, w)
+                if (again.value.isNotEmpty()) { clusters = parts; chosen = again; ruleIds += ruleId; final = w?.lastRead }
+            }
+            w?.lastRead = final
         }
+        w?.finish(clusters, chosen)
         return finish(clusters, chosen, ruleIds)
     }
 
     /** ko·en 병렬 인식 → Candidate 체인. */
-    private suspend fun read(ink: List<InkStroke>, pre: String): Verdict<String> {
+    private suspend fun read(ink: List<InkStroke>, pre: String, w: WordRecorder?): Verdict<String> {
         val area = ink.bounds()
         val (ko, en) = coroutineScope {
             val ko = async { engine.recognize(InkLanguage.KO, ink, pre, area) }
             val en = async { engine.recognize(InkLanguage.EN, ink, pre, area) }
             ko.await() to en.await()
         }
+        w?.read(ink, pre, ko, en)
         return rules.candidate.firstMatch(CandidateInput(ko, en), ::defaultCandidate)
     }
 
@@ -112,12 +134,12 @@ class InkPipeline(
      * 보통 입력은 체인이 null 이라 추가 호출이 없다. 호출은 단어당 [InkConfig.maxSplitCalls] 까지.
      */
     private suspend fun split(
-        clusters: List<List<InkStroke>>, text: String, pre: String, trace: StringBuilder,
+        clusters: List<List<InkStroke>>, text: String, pre: String, trace: StringBuilder, w: WordRecorder?,
     ): Pair<List<List<InkStroke>>, String>? {
         if (text.length != clusters.size) return null
         var calls = 0
 
-        suspend fun cut(c: List<InkStroke>, target: String): List<List<InkStroke>>? {
+        suspend fun cut(c: List<InkStroke>, target: String, tries: MutableList<InkSplitTry>?): List<List<InkStroke>>? {
             val parts = ArrayList<List<InkStroke>>()
             var start = 0
             var last = 0
@@ -128,7 +150,10 @@ class InkPipeline(
                     if (calls >= config.maxSplitCalls) return null
                     calls++
                     val chunk = c.subList(start, start + len)
-                    if (engine.recognize(InkLanguage.KO, chunk, pre, chunk.bounds()).firstOrNull()?.trim() == target) { found = len; break }
+                    val ko = engine.recognize(InkLanguage.KO, chunk, pre, chunk.bounds())
+                    w?.call(InkLanguage.KO, chunk, pre, ko)
+                    tries?.add(InkSplitTry(start, len, ko.firstOrNull()))
+                    if (ko.firstOrNull()?.trim() == target) { found = len; break }
                 }
                 if (found == 0) {
                     // 끝에 남은 짧은 조각(현장: 7획 중 마지막 1획)은 버리지 말고 마지막 조각에 붙인다
@@ -147,7 +172,9 @@ class InkPipeline(
         var ruleId: String? = null
         for ((i, c) in clusters.withIndex()) {
             val v = rules.split.firstMatch(SplitInput(c, text[i].toString())) { "" }
-            val parts = if (v.value.isEmpty()) null else cut(c, v.value)
+            val tries = if (w != null && v.value.isNotEmpty()) ArrayList<InkSplitTry>() else null
+            val parts = if (v.value.isEmpty()) null else cut(c, v.value, tries)
+            if (w != null && tries != null) w.splits += InkSplitAttempt(i, v.value, tries, parts?.map(w::ids))
             if (v.value.isNotEmpty()) trace.append(" | split#").append(i).append(' ').append(v.value).append(" x").append(parts?.size ?: 0)
             if (parts != null) { out += parts; ruleId = v.ruleId } else out += c
         }
@@ -156,17 +183,18 @@ class InkPipeline(
     }
 
     /** 획마다 "번호 N(새 글자, 규칙)/S(같은 글자) in=상자 안 비율 p=쉼ms g=간격dp". 측정은 그 획을 판정할 때의 묶음 기준. */
-    private fun trace(clusters: List<Cluster>, sb: StringBuilder) {
+    private fun trace(clusters: List<Cluster>, sb: StringBuilder, w: WordRecorder?) {
         var k = 0
         var prev: List<InkStroke> = emptyList()
         for (c in clusters) for ((j, s) in c.strokes.withIndex()) {
             val current = if (j == 0) prev else c.strokes.subList(0, j)
             sb.append(" | ").append(k++).append(if (j == 0) " N " + c.startedBy?.substringAfter('/') else " S")
-            if (current.isNotEmpty()) {
-                val m = SegmentInput(current, s)
+            val m = if (current.isNotEmpty()) SegmentInput(current, s) else null
+            if (m != null) {
                 sb.append(" in=").append("%.2f".format(Locale.ROOT, m.insideRatio(config))).append(" p=").append(m.pauseMs)
                     .append(" g=").append(m.gap.toInt())
             }
+            w?.segments?.add(InkSegmentStep(j == 0, if (j == 0) c.startedBy else null, m?.insideRatio(config), m?.pauseMs, m?.gap))
             if (j == c.strokes.lastIndex) prev = c.strokes
         }
     }
@@ -176,16 +204,22 @@ class InkPipeline(
      * 묶음 전체로 읽으므로 이어 쓴 가|마 는 "가마"(음절 2개)라 안 합친다. 획마다 하면 가+ㅁ 첫 세로획이 "개"로 읽혀 잘못 합친다.
      */
     private suspend fun mergeHypotheses(
-        clusters: List<Cluster>, pre: String, ruleIds: MutableSet<String>, checked: Set<String>,
+        clusters: List<Cluster>, pre: String, ruleIds: MutableSet<String>, checked: Set<String>, w: WordRecorder?,
     ): List<List<InkStroke>> {
         val out = ArrayList<Cluster>()
         var calls = 0
-        for (c in clusters) {
+        for (i in clusters.indices) {
+            val c = clusters[i]
             val prev = out.lastOrNull()
             if (prev != null && c.startedBy in checked && calls < config.maxHypothesisCalls) {
                 calls++
                 val merged = prev.strokes + c.strokes
-                val v = rules.merge.firstMatch(MergeInput(engine.recognize(InkLanguage.KO, merged, pre, merged.bounds()))) { false }
+                val ko = engine.recognize(InkLanguage.KO, merged, pre, merged.bounds())
+                val v = rules.merge.firstMatch(MergeInput(ko)) { false }
+                if (w != null) {
+                    w.call(InkLanguage.KO, merged, pre, ko)
+                    w.merges += InkMergeCheck(i, c.startedBy.orEmpty(), ko, v.value)
+                }
                 if (v.value) {
                     out[out.lastIndex] = prev.copy(strokes = merged)
                     v.ruleId?.let(ruleIds::add)

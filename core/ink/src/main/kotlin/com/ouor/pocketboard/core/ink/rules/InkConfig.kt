@@ -1,11 +1,13 @@
 package com.ouor.pocketboard.core.ink.rules
 
 import com.ouor.pocketboard.core.common.ink.InkStroke
+import kotlinx.serialization.Serializable
 
 /**
  * 판정 임계값(dp, ms). 초기값은 조사 초안이며 실기기 실험 E5 기록으로 조정한다.
  * "글자 크기" = 묶음 높이, 단 [minCharSize] 보다 작으면 [minCharSize](점·가로획만 있는 묶음 대비).
  */
+@Serializable   // InkReport 에 그대로 남긴다
 data class InkConfig(
     val minCharSize: Float = 24f,
     /** S2: 새 획 왼쪽이 묶음 오른쪽 + 글자 크기 × 이 값보다 오른쪽이면 새 글자. */

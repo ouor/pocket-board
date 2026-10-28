@@ -1,18 +1,21 @@
 package com.ouor.pocketboard.session
 
+import com.ouor.pocketboard.core.common.ink.InkItem
 import com.ouor.pocketboard.core.gesture.ContactRecord
 import com.ouor.pocketboard.core.gesture.HapticPattern
+import com.ouor.pocketboard.core.ink.InkReport
 
 /** 오판정 기록(F30) 출구. 구현은 `data.DevLog`(꺼져 있으면 아무것도 안 함). */
 interface SessionLog {
     fun contact(record: ContactRecord)
-    fun send(text: String, ruleIds: List<String>, keyRuleIds: List<String>, result: String)
+    /** [report] 가 있으면 보낸 [items] 와 함께 잉크 기록(ink 줄 + SVG)도 남긴다. */
+    fun send(text: String, ruleIds: List<String>, keyRuleIds: List<String>, result: String, items: List<InkItem> = emptyList(), report: InkReport? = null)
     fun haptic(pattern: HapticPattern)
 
     companion object {
         val NONE = object : SessionLog {
             override fun contact(record: ContactRecord) = Unit
-            override fun send(text: String, ruleIds: List<String>, keyRuleIds: List<String>, result: String) = Unit
+            override fun send(text: String, ruleIds: List<String>, keyRuleIds: List<String>, result: String, items: List<InkItem>, report: InkReport?) = Unit
             override fun haptic(pattern: HapticPattern) = Unit
         }
     }

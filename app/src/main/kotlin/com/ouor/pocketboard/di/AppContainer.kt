@@ -84,7 +84,7 @@ class AppContainer(context: Context) {
         mapping = mapping,
         gestureConfig = settings.part { it.gesture },
         emptySendEnter = { settings.value.emptySendEnter },
-        logContacts = { settings.value.devlogEnabled },
+        devlogEnabled = { settings.value.devlogEnabled },
         previewEnabled = settings.part { it.previewEnabled },
         newRecognizer = ::DefaultGestureRecognizer,
         scope = scope,

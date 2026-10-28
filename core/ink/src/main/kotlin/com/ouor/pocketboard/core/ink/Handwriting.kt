@@ -42,6 +42,13 @@ interface HandwritingRecognizer : AutoCloseable {
      * [preContext]는 :core:keymap 의 전송 이력(A19)에서 온다.
      */
     suspend fun recognize(items: List<InkItem>, preContext: String): RecognitionOutcome
+
+    /**
+     * [recognize] 와 같고, 디버그 보고서(ink.md §3.2)를 끝에 [report] 로 한 번 넘긴다. 기록이 켜졌을 때만 이것을 부른다
+     * (보고서는 이때만 만든다). ModelNotReady 면 부르지 않는다. 기본 구현은 보고서 없이 [recognize].
+     */
+    suspend fun recognize(items: List<InkItem>, preContext: String, report: (InkReport) -> Unit): RecognitionOutcome =
+        recognize(items, preContext)
 }
 
 sealed interface RecognitionOutcome {

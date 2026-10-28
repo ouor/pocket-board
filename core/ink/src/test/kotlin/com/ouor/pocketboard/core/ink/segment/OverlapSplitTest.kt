@@ -2,6 +2,7 @@ package com.ouor.pocketboard.core.ink.segment
 
 import com.ouor.pocketboard.core.common.ink.InkItem
 import com.ouor.pocketboard.core.common.ink.InkStroke
+import com.ouor.pocketboard.core.ink.InkReport
 import com.ouor.pocketboard.core.ink.RecognitionOutcome
 import com.ouor.pocketboard.core.ink.SegmentationMode
 import com.ouor.pocketboard.core.ink.line
@@ -124,6 +125,22 @@ class OverlapSplitTest {
         val out = pipeline().recognize(items, "", SegmentationMode.RULES) as RecognitionOutcome.Text
         assertEquals("ㅋㅋㅋ", out.text)
         assertTrue(logs.single(), logs.single().endsWith("| split#0 ㅋ x3 calls=5"))
+    }
+
+    @Test
+    fun overlapped_kkkk_lastStrokeDropped_reportReplaysSplit() = runTest {
+        val items = write(List(4) { KIEUK }, List(4) { 0f }).dropLast(1)
+        var r: InkReport? = null
+        pipeline().recognize(items, "", SegmentationMode.RULES) { r = it }
+        val split = r!!.words.single().splits.single()
+        assertEquals("ㅋ", split.target)
+        assertEquals(listOf("ㄱ", "ㅋ", "ㅋ", "ㅋ", "ㄱ"), split.tries.map { it.reading })
+        assertEquals(listOf(listOf(0, 1), listOf(2, 3), listOf(4, 5, 6)), split.parts)
+        assertEquals(split.parts, r!!.words.single().clusters)
+
+        val recorded = RecordedInkEngine(items, r!!)
+        assertEquals(r, replayInk(items, r!!, recorded))
+        assertEquals(0, recorded.misses)
     }
 
     @Test

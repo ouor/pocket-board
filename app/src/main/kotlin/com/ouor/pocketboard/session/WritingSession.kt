@@ -18,6 +18,7 @@ import com.ouor.pocketboard.core.hid.HidKeyboard
 import com.ouor.pocketboard.core.hid.HidState
 import com.ouor.pocketboard.core.hid.SendResult
 import com.ouor.pocketboard.core.ink.HandwritingRecognizer
+import com.ouor.pocketboard.core.ink.InkReport
 import com.ouor.pocketboard.core.ink.RecognitionOutcome
 import com.ouor.pocketboard.core.keymap.KeyInput
 import com.ouor.pocketboard.core.keymap.KeyPlan
@@ -66,7 +67,8 @@ class WritingSession(
     private val mapping: StateFlow<GestureMapping>,
     private val gestureConfig: StateFlow<GestureConfig>,
     private val emptySendEnter: () -> Boolean,
-    private val logContacts: () -> Boolean,
+    /** 오판정 기록(F30) 켜짐: 접촉과 잉크 보고서를 남긴다. */
+    private val devlogEnabled: () -> Boolean,
     /** F25 미리보기 설정. 꺼져 있으면 미리보기 인식을 하지 않는다. */
     private val previewEnabled: StateFlow<Boolean>,
     private val newRecognizer: (GestureConfig) -> GestureRecognizer,
@@ -198,7 +200,7 @@ class WritingSession(
             }
         }
         step.records.forEach { if (it.result == "rejected") Log.i(TAG, "rejected ${it.ruleIds} major=${it.samples.maxOf { s -> s.touchMajorDp }}") }
-        if (logContacts()) step.records.forEach(log::contact)
+        if (devlogEnabled()) step.records.forEach(log::contact)
         timer?.cancel()
         step.wakeAtMs?.let { at ->
             timer = scope.launch {
@@ -288,7 +290,9 @@ class WritingSession(
 
     private suspend fun sendInk() {
         val items = buffer.toList()
-        val outcome = recognizer.recognize(items, keyInput.preContext())
+        var report: InkReport? = null
+        val outcome = if (devlogEnabled()) recognizer.recognize(items, keyInput.preContext()) { report = it }
+        else recognizer.recognize(items, keyInput.preContext())
         Log.i(TAG, "recognize ${items.size} items -> $outcome")
         when (outcome) {
             is RecognitionOutcome.Text -> {
@@ -299,13 +303,13 @@ class WritingSession(
                     _lastSent.value = (_lastSent.value + outcome.text).takeLast(LAST_SENT_MAX)
                     emit(WritingEvent.Sent(outcome.text, items.strokes()))
                 }
-                log.send(outcome.text, outcome.ruleIds, plan.ruleIds, result.toString())
+                log.send(outcome.text, outcome.ruleIds, plan.ruleIds, result.toString(), items, report)
             }
             RecognitionOutcome.Empty, RecognitionOutcome.ModelNotReady -> {
                 emit(WritingEvent.StrokesDiscarded(items.strokes(), failed = true))
                 buffer.subList(0, items.size).clear() // E3, D9
                 play(HapticPattern.RECOGNITION_FAILED)
-                log.send("", emptyList(), emptyList(), outcome.toString())
+                log.send("", emptyList(), emptyList(), outcome.toString(), items, report)
             }
         }
     }

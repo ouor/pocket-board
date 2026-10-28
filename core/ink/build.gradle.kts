@@ -1,6 +1,7 @@
 // Android 라이브러리 모듈. 판정·상태기계 같은 순수 로직은 android.* 를 import 하지 않는 패키지에 두고 JVM 단위 테스트한다.
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -19,6 +20,7 @@ android {
 
 dependencies {
     api(project(":core:common"))
+    api(libs.kotlinx.serialization.json)                  // InkReport(전송별 디버그 보고서)
     implementation(libs.mlkit.digital.ink)
     implementation(libs.kotlinx.coroutines.play.services)   // ML Kit Task.await()
     implementation(libs.kotlinx.coroutines.android)
