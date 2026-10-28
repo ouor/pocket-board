@@ -1,9 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)   // 내비게이션 경로, 개발자 기록(JSONL)
     alias(libs.plugins.aboutlibraries)         // 오픈소스 라이선스 목록(SC12) 생성
     alias(libs.plugins.roborazzi)              // QA 스크린샷: recordRoborazziDebug → docs/qa/screenshots
+}
+
+// 릴리스 서명(signing/SIGNING.md). keystore.properties 가 없으면(CI, 다른 개발자) 릴리스는 서명 없이 빌드된다.
+val ksProps = Properties().apply {
+    rootProject.file("signing/keystore.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
 }
 
 android {
@@ -16,12 +23,24 @@ android {
         applicationId = "com.ouor.pocketboard"
         minSdk = 28   // BluetoothHidDevice
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "0.6.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("signing/release.p12")
+            storeType = "PKCS12"
+            storePassword = ksProps.getProperty("storePassword")
+            keyAlias = "release"
+            keyPassword = ksProps.getProperty("storePassword")
+        }
     }
 
     buildTypes {
         release {
+            if (ksProps.containsKey("storePassword")) signingConfig = signingConfigs.getByName("release")
+            ndk { abiFilters += "arm64-v8a" }   // 배포 APK 는 arm64 전용(ML Kit 네이티브 라이브러리)
             optimization {
                 enable = false
             }
