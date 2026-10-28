@@ -71,6 +71,7 @@ internal object SettingsCodec {
     private val LATIN_V1 = stringPreferencesKey("keymap_latin")
     private val SEGMENTATION = stringPreferencesKey("ink_segmentation")
     private val INK_RESTART_PAUSE = longPreferencesKey("ink_restart_pause_ms")
+    private val INK_NEW_CHAR_PAUSE = longPreferencesKey("ink_new_char_pause_ms")
     private val INK_RESTART_OVERLAP = floatPreferencesKey("ink_restart_overlap_ratio")
     private val INK_RESTART_MARGIN = floatPreferencesKey("ink_restart_margin_ratio")
     private val INK_RIGHT_OF_GAP = floatPreferencesKey("ink_right_of_gap_ratio")
@@ -123,6 +124,7 @@ internal object SettingsCodec {
                     restartOverlapRatio = (p[INK_RESTART_OVERLAP] ?: i.restartOverlapRatio).coerceIn(InkRanges.ratio),
                     restartMarginRatio = (p[INK_RESTART_MARGIN] ?: i.restartMarginRatio).coerceIn(InkRanges.ratio),
                     restartPauseMs = (p[INK_RESTART_PAUSE] ?: i.restartPauseMs).coerceIn(InkRanges.restartPauseMs),
+                    newCharPauseMs = (p[INK_NEW_CHAR_PAUSE] ?: i.newCharPauseMs).coerceIn(InkRanges.newCharPauseMs),
                     relayoutGapRatio = (p[INK_RELAYOUT_GAP] ?: i.relayoutGapRatio).coerceIn(InkRanges.ratio),
                     maxHypothesisCalls = (p[INK_MAX_HYPOTHESIS] ?: i.maxHypothesisCalls).coerceIn(InkRanges.maxHypothesisCalls),
                     splitStrokeRatio = (p[INK_SPLIT_STROKE_RATIO] ?: i.splitStrokeRatio).coerceIn(InkRanges.splitStrokeRatio),
@@ -160,6 +162,7 @@ internal object SettingsCodec {
         p.remove(LATIN_V1)
         p[SEGMENTATION] = s.ink.segmentation.id
         p[INK_RESTART_PAUSE] = s.ink.config.restartPauseMs
+        p[INK_NEW_CHAR_PAUSE] = s.ink.config.newCharPauseMs
         p[INK_RESTART_OVERLAP] = s.ink.config.restartOverlapRatio
         p[INK_RESTART_MARGIN] = s.ink.config.restartMarginRatio
         p[INK_RIGHT_OF_GAP] = s.ink.config.rightOfGapRatio
@@ -189,6 +192,7 @@ object InkRanges {
     val rightOfGapRatio = 0f..2f
     val ratio = 0f..1f
     val restartPauseMs = 0L..2000L
+    val newCharPauseMs = 0L..3000L
     val maxHypothesisCalls = 0..10
     val splitStrokeRatio = 1f..5f
     val maxSplitCalls = 0..12

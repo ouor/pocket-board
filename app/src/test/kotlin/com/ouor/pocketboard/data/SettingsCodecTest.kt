@@ -12,7 +12,7 @@ import org.junit.Test
 class SettingsCodecTest {
     @Test
     fun inkConfigRoundTrips() {
-        val s = AppSettings(ink = AppSettings().ink.copy(config = InkConfig(restartPauseMs = 425, rightOfGapRatio = 1.5f)))
+        val s = AppSettings(ink = AppSettings().ink.copy(config = InkConfig(restartPauseMs = 425, newCharPauseMs = 900, rightOfGapRatio = 1.5f)))
         val p = mutablePreferencesOf()
         SettingsCodec.encode(s, p)
         assertEquals(s, SettingsCodec.decode(p))
@@ -22,10 +22,12 @@ class SettingsCodecTest {
     fun outOfRangeInkValuesAreClampedInsteadOfThrowing() {
         val p = mutablePreferencesOf(
             longPreferencesKey("ink_restart_pause_ms") to 99_999L,
+            longPreferencesKey("ink_new_char_pause_ms") to 99_999L,
             floatPreferencesKey("ink_restart_overlap_ratio") to -1f,
         )
         val c = SettingsCodec.decode(p).ink.config
         assertEquals(2000L, c.restartPauseMs)
+        assertEquals(3000L, c.newCharPauseMs)
         assertEquals(0f, c.restartOverlapRatio)
     }
 

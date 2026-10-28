@@ -11,11 +11,16 @@ object FirstStrokeRule : Rule<SegmentInput, Boundary> {
 
 /** S2(이어 쓰기): 새 획이 묶음 오른쪽으로 글자 크기 × 비율 이상 떨어져 시작 → 새 글자. */
 class RightOfRule(private val config: InkConfig) : Rule<SegmentInput, Boundary> {
-    override val id = "segment/right-of"
+    override val id = ID
     override fun apply(input: SegmentInput): Boundary? {
         val box = input.current.bounds()
         val gap = config.charSize(box.height) * config.rightOfGapRatio
         return if (input.stroke.bounds().left > box.right + gap) Boundary.NEW_CHAR else null
+    }
+
+    companion object {
+        /** 단계 B·C 가 합침을 확인하는 경계(모음이 떨어져 시작해 음절이 끊긴 경우). */
+        const val ID = "segment/right-of"
     }
 }
 
@@ -30,6 +35,12 @@ class SameSpotRestartRule(private val config: InkConfig) : Rule<SegmentInput, Bo
         /** 단계 C 가 "애매한 경계"로 보는 규칙 id. */
         const val ID = "segment/same-spot-restart"
     }
+}
+
+/** S4: 직전 획 뒤 쉼이 아주 길다 → 자리와 상관없이 새 글자(묶음 상자가 가는 ㅣ 뿐이라 S3 가 안 걸리는 경우). */
+class LongPauseRule(private val config: InkConfig) : Rule<SegmentInput, Boundary> {
+    override val id = "segment/long-pause"
+    override fun apply(input: SegmentInput) = if (input.pauseMs >= config.newCharPauseMs) Boundary.NEW_CHAR else null
 }
 
 // 규칙과 분할 로그(pb.ink.segment)가 같이 쓰는 측정값. [SegmentInput.current]가 비어 있으면 부르지 않는다.

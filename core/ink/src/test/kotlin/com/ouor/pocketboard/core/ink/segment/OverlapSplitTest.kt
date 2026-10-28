@@ -118,11 +118,21 @@ class OverlapSplitTest {
     }
 
     @Test
-    fun sideBySide_kkkk_noExtraCalls() = runTest {
+    fun overlapped_kkkk_lastStrokeDropped_keepsFoundParts() = runTest {
+        // 현장: 7획에서 ㅋ|ㅋ|ㅋ 을 찾고 남은 1획이 ㅋ 로 안 읽혀 나누기 전체가 버려져 "ㅋ"
+        val items = write(List(4) { KIEUK }, List(4) { 0f }).dropLast(1)
+        val out = pipeline().recognize(items, "", SegmentationMode.RULES) as RecognitionOutcome.Text
+        assertEquals("ㅋㅋㅋ", out.text)
+        assertTrue(logs.single(), logs.single().endsWith("| split#0 ㅋ x3 calls=5"))
+    }
+
+    @Test
+    fun sideBySide_kkkk_onlyRightOfMergeChecks() = runTest {
         val out = run(List(4) { KIEUK }, listOf(0f, 130f, 260f, 390f))
         assertEquals("ㅋㅋㅋㅋ", out.text)
         assertTrue("segment/right-of" in out.ruleIds)
-        assertEquals(2, calls.size)
+        assertTrue("merge/single-syllable" !in out.ruleIds)
+        assertEquals(3 + 2, calls.size)   // right-of 경계 3곳 합침 확인(ㅋㅋ 로 읽혀 안 합침) + ko + en
     }
 
     @Test
@@ -133,12 +143,14 @@ class OverlapSplitTest {
 
     @Test
     fun multiStrokeSyllables_inPlace_unchanged() = runTest {
-        for ((glyph, text) in listOf(GA to "가", HAN to "한", NYEONG to "녕", BWELK to "뷁")) {
+        // 뷁: ㅂ 둘째 세로획이 첫 세로획(높이 25) 오른쪽으로 떨어져 right-of 로 끊김 → 합침 확인 1회로 다시 한 글자
+        for ((glyph, text, merges) in listOf(Triple(GA, "가", 0), Triple(HAN, "한", 0), Triple(NYEONG, "녕", 0), Triple(BWELK, "뷁", 1))) {
             calls.clear()
             val out = run(listOf(glyph), listOf(0f))
             assertEquals(text, out.text)
             assertTrue(text, "split/stroke-excess" !in out.ruleIds)
-            assertEquals(text, 2, calls.size)
+            assertEquals(text, merges == 1, "merge/single-syllable" in out.ruleIds)
+            assertEquals(text, 2 + merges, calls.size)
         }
     }
 

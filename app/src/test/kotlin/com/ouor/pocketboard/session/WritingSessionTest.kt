@@ -212,7 +212,7 @@ class WritingSessionTest {
             tap(220f, 520f)
             tap(223f, 522f)
             runCurrent()
-            assertEquals("major=$major", listOf(3, 3), engineStrokes) // ko·en 각각 3획(점 획은 retract)
+            assertEquals("major=$major", listOf(3, 3, 3), engineStrokes) // ㄴ|ㅣ right-of 합침 확인(ko) + ko·en 각각 3획(점 획은 retract)
             assertEquals("major=$major", listOf("text:안녕"), f.hid.sent)
             assertEquals("major=$major", listOf(HapticPattern.SENT), f.played)
         }

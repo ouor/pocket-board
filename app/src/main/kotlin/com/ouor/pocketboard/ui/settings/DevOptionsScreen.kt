@@ -119,6 +119,7 @@ fun DevOptionsScreen(
         SettingGroup("글씨 인식(A36)") {
             SettingRow("겹쳐 쓰기 처리", RowKind.Value, value = SEGMENTATION.name(s.ink.segmentation)) { sheet = "seg" }
             Num("같은 자리 재시작 쉼", i.restartPauseMs.toDouble(), 25.0, InkRanges.restartPauseMs.l(), "ms", 0) { v -> ink { it.copy(restartPauseMs = v.toLong()) } }
+            Num("긴 쉼 새 글자", i.newCharPauseMs.toDouble(), 25.0, InkRanges.newCharPauseMs.l(), "ms", 0) { v -> ink { it.copy(newCharPauseMs = v.toLong()) } }
             Num("재시작 겹침 비율", i.restartOverlapRatio.toDouble(), 0.05, InkRanges.ratio.f(), "", 2) { v -> ink { it.copy(restartOverlapRatio = v.toFloat()) } }
             Num("재시작 상자 여유", i.restartMarginRatio.toDouble(), 0.05, InkRanges.ratio.f(), "×", 2) { v -> ink { it.copy(restartMarginRatio = v.toFloat()) } }
             Num("오른쪽 새 글자 간격", i.rightOfGapRatio.toDouble(), 0.05, InkRanges.rightOfGapRatio.f(), "×", 2) { v -> ink { it.copy(rightOfGapRatio = v.toFloat()) } }

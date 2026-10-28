@@ -11,6 +11,7 @@ import com.ouor.pocketboard.core.ink.rules.CandidateInput
 import com.ouor.pocketboard.core.ink.rules.InkConfig
 import com.ouor.pocketboard.core.ink.rules.InkRules
 import com.ouor.pocketboard.core.ink.rules.MergeInput
+import com.ouor.pocketboard.core.ink.rules.RightOfRule
 import com.ouor.pocketboard.core.ink.rules.SameSpotRestartRule
 import com.ouor.pocketboard.core.ink.rules.SegmentInput
 import com.ouor.pocketboard.core.ink.rules.SplitInput
@@ -76,10 +77,8 @@ class InkPipeline(
         trace.append(" / n=").append(strokes.size)
         if (mode == SegmentationMode.RAW) return finish(listOf(strokes), read(strokes, pre), ruleIds)
         val segmented = segmenter.clusters(strokes).also { trace(it, trace) }
-        var clusters: List<List<InkStroke>> = when (mode) {
-            SegmentationMode.HYPOTHESIS -> mergeHypotheses(segmented, pre, ruleIds)
-            else -> segmented.also { c -> c.mapNotNullTo(ruleIds) { it.startedBy } }.map { it.strokes }
-        }
+        val checked = if (mode == SegmentationMode.HYPOTHESIS) HYPOTHESIS_BOUNDARIES else RULES_BOUNDARIES
+        var clusters = mergeHypotheses(segmented, pre, ruleIds, checked)
         var chosen = read(relayout(clusters, config.relayoutGapRatio, config.minCharSize), pre)
         split(clusters, chosen.value, pre, trace)?.let { (parts, ruleId) ->
             val again = read(relayout(parts, config.relayoutGapRatio, config.minCharSize), pre)
@@ -131,7 +130,12 @@ class InkPipeline(
                     val chunk = c.subList(start, start + len)
                     if (engine.recognize(InkLanguage.KO, chunk, pre, chunk.bounds()).firstOrNull()?.trim() == target) { found = len; break }
                 }
-                if (found == 0) return null
+                if (found == 0) {
+                    // 끝에 남은 짧은 조각(현장: 7획 중 마지막 1획)은 버리지 말고 마지막 조각에 붙인다
+                    if (parts.isEmpty() || rem >= last) return null
+                    parts[parts.lastIndex] = c.subList(start - last, c.size)
+                    break
+                }
                 parts += c.subList(start, start + found)
                 start += found
                 last = found
@@ -167,13 +171,18 @@ class InkPipeline(
         }
     }
 
-    /** 단계 C: 같은 자리 재시작으로 끊긴 경계마다 합쳐 인식해 보고 Merge 규칙이 합치라면 합친다. */
-    private suspend fun mergeHypotheses(clusters: List<Cluster>, pre: String, ruleIds: MutableSet<String>): List<List<InkStroke>> {
+    /**
+     * [checked] 규칙으로 끊긴 경계마다 앞 묶음과 합쳐 ko 로 인식해 보고 Merge 규칙이 합치라면 합친다.
+     * 묶음 전체로 읽으므로 이어 쓴 가|마 는 "가마"(음절 2개)라 안 합친다. 획마다 하면 가+ㅁ 첫 세로획이 "개"로 읽혀 잘못 합친다.
+     */
+    private suspend fun mergeHypotheses(
+        clusters: List<Cluster>, pre: String, ruleIds: MutableSet<String>, checked: Set<String>,
+    ): List<List<InkStroke>> {
         val out = ArrayList<Cluster>()
         var calls = 0
         for (c in clusters) {
             val prev = out.lastOrNull()
-            if (prev != null && c.startedBy == SameSpotRestartRule.ID && calls < config.maxHypothesisCalls) {
+            if (prev != null && c.startedBy in checked && calls < config.maxHypothesisCalls) {
                 calls++
                 val merged = prev.strokes + c.strokes
                 val v = rules.merge.firstMatch(MergeInput(engine.recognize(InkLanguage.KO, merged, pre, merged.bounds()))) { false }
@@ -192,5 +201,9 @@ class InkPipeline(
     companion object {
         /** ML Kit 은 마지막 20자만 쓴다(ink.md §2.3). */
         const val PRE_CONTEXT_MAX = 20
+
+        /** 합침을 확인할 경계: B 는 모음이 떨어져 시작한 right-of 만, C 는 같은 자리 재시작도. */
+        private val RULES_BOUNDARIES = setOf(RightOfRule.ID)
+        private val HYPOTHESIS_BOUNDARIES = setOf(RightOfRule.ID, SameSpotRestartRule.ID)
     }
 }

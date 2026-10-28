@@ -16,9 +16,11 @@ data class InkConfig(
     val restartMarginRatio: Float = 0.1f,
     /** S3: 직전 획 끝 → 새 획 시작 쉼이 이 값 이상이면 같은 자리 재시작(새 글자). */
     val restartPauseMs: Long = 350,
+    /** S4: 직전 획 끝 → 새 획 시작 쉼이 이 값 이상이면 자리와 상관없이 새 글자. 현장: 글자 안 ≤284ms, 글자 사이 712~1964ms. */
+    val newCharPauseMs: Long = 600,
     /** 재배치 시 묶음 사이 간격 = 앞 묶음 높이 × 이 값. */
     val relayoutGapRatio: Float = 0.2f,
-    /** 단계 C 에서 단어 하나당 추가 인식 호출 상한(지연 예산). */
+    /** 합침 확인(B: right-of 경계, C: + same-spot-restart 경계)에서 단어 하나당 추가 인식 호출 상한(지연 예산). */
     val maxHypothesisCalls: Int = 4,
     /** Split: 묶음 획 수 ≥ 읽힌 한글 글자의 표준 획 수 × 이 값이면 같은 글자를 같은 자리에 겹쳐 쓴 것으로 본다. */
     val splitStrokeRatio: Float = 2f,
@@ -32,6 +34,7 @@ data class InkConfig(
         require(restartOverlapRatio in 0f..1f) { "restartOverlapRatio $restartOverlapRatio" }
         require(restartMarginRatio in 0f..1f) { "restartMarginRatio $restartMarginRatio" }
         require(restartPauseMs in 0L..2000L) { "restartPauseMs $restartPauseMs" }
+        require(newCharPauseMs in 0L..3000L) { "newCharPauseMs $newCharPauseMs" }
         require(relayoutGapRatio in 0f..1f) { "relayoutGapRatio $relayoutGapRatio" }
         require(maxHypothesisCalls in 0..10) { "maxHypothesisCalls $maxHypothesisCalls" }
         require(splitStrokeRatio in 1f..5f) { "splitStrokeRatio $splitStrokeRatio" }
@@ -49,7 +52,7 @@ data class SegmentInput(val current: List<InkStroke>, val stroke: InkStroke)
 /** Candidate 단계 입력. 각 목록은 인식기 후보 순서 그대로(점수 없음, ink.md §2.4). */
 data class CandidateInput(val ko: List<String>, val en: List<String>)
 
-/** Merge 단계(단계 C) 입력: 끊긴 두 묶음을 합쳐 ko 로 인식한 후보. */
+/** Merge 단계(B·C) 입력: 끊긴 두 묶음을 합쳐 ko 로 인식한 후보. */
 data class MergeInput(val ko: List<String>)
 
 /** Split 단계 입력: 인식 결과와 1:1 로 대응한 글자 묶음 하나와 그 묶음이 읽힌 글자. */
