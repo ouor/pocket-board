@@ -73,9 +73,11 @@ class FieldEvalTest {
         val dump = args.getString("dump") == "true"
         val noPre = args.getString("pre") == "none"   // 저장된 앞 문맥(이전 오인식 포함)을 빼고 평가
         val assets = instrumentation.context.assets
-        val cases = assets.open("field/cases.tsv").bufferedReader().readLines()
+        fun labeled(list: String) = assets.open("field/$list").bufferedReader().readLines()
             .filter { it.isNotBlank() && !it.startsWith("#") }
             .map { it.split('\t').let { (file, truth) -> Triple(file, truth, json.decodeFromString(FieldInk.serializer(), assets.open("field/$file").bufferedReader().readText())) } }
+        // 현장 문장(cases) 과 한 음절 안전 확인(singles) 은 CER 을 따로 낸다: cases 숫자를 예전 것과 비교할 수 있게
+        val groups = listOf("cases" to labeled("cases.tsv"), "singles" to labeled("singles.tsv"))
         // 정답 없는 현장 기록(회귀 확인용): 전략마다 결과만 낸다("U" 줄)
         val unlabeled = assets.open("field/unlabeled.tsv").bufferedReader().readLines()
             .filter { it.isNotBlank() && !it.startsWith("#") }
@@ -92,25 +94,27 @@ class FieldEvalTest {
 
         for (s in strategies.filter { only == null || it.name in only }) {
             out("== ${s.name} (${s.mode.id}) ${s.config}")
-            var edits = 0; var chars = 0; var editsSp = 0; var charsSp = 0; var ms = 0L; var maxMs = 0L; var extra = 0; var maxExtra = 0
-            for ((file, truth, ink) in cases) {
-                val pipeline = InkPipeline(engine, s.config, defaultInkRules(s.config))
-                var report: InkReport? = null
-                calls = 0
-                val t0 = SystemClock.elapsedRealtime()
-                val pre = if (noPre) "" else ink.report.preContext
-                val text = (pipeline.recognize(ink.items(), pre, s.mode) { report = it } as? RecognitionOutcome.Text)?.text.orEmpty()
-                val took = SystemClock.elapsedRealtime() - t0
-                val e = distance(text.filterNot(Char::isWhitespace), truth.filterNot(Char::isWhitespace))
-                val eSp = distance(text.trim(), truth)
-                val x = calls - 2 * (report?.words?.size ?: 0)   // 단어마다 최종 ko·en 2회 밖의 추가 호출
-                extra += x; maxExtra = maxOf(maxExtra, x)
-                edits += e; chars += truth.count { !it.isWhitespace() }; editsSp += eSp; charsSp += truth.length; ms += took; maxMs = maxOf(maxMs, took)
-                out(String.format(Locale.ROOT, "%-24s n=%-3d %5dms +%d  e=%d/%d  %-14s | %s", file, ink.strokes.size, took, x, e, eSp, "\"$text\"", truth))
-                if (dump && report != null) out("REPORT $file ${json.encodeToString(InkReport.serializer(), report!!)}")
+            for ((group, cases) in groups) {
+                var edits = 0; var chars = 0; var editsSp = 0; var charsSp = 0; var ms = 0L; var maxMs = 0L; var extra = 0; var maxExtra = 0
+                for ((file, truth, ink) in cases) {
+                    val pipeline = InkPipeline(engine, s.config, defaultInkRules(s.config))
+                    var report: InkReport? = null
+                    calls = 0
+                    val t0 = SystemClock.elapsedRealtime()
+                    val pre = if (noPre) "" else ink.report.preContext
+                    val text = (pipeline.recognize(ink.items(), pre, s.mode) { report = it } as? RecognitionOutcome.Text)?.text.orEmpty()
+                    val took = SystemClock.elapsedRealtime() - t0
+                    val e = distance(text.filterNot(Char::isWhitespace), truth.filterNot(Char::isWhitespace))
+                    val eSp = distance(text.trim(), truth)
+                    val x = calls - 2 * (report?.words?.size ?: 0)   // 단어마다 최종 ko·en 2회 밖의 추가 호출
+                    extra += x; maxExtra = maxOf(maxExtra, x)
+                    edits += e; chars += truth.count { !it.isWhitespace() }; editsSp += eSp; charsSp += truth.length; ms += took; maxMs = maxOf(maxMs, took)
+                    out(String.format(Locale.ROOT, "%-24s n=%-3d %5dms +%d  e=%d/%d  %-14s | %s", file, ink.strokes.size, took, x, e, eSp, "\"$text\"", truth))
+                    if (dump && report != null) out("REPORT $file ${json.encodeToString(InkReport.serializer(), report!!)}")
+                }
+                out(String.format(Locale.ROOT, "== %s [%s] CER(공백 무시)=%.3f (%d/%d)  CER(공백 포함)=%.3f  평균 %dms  최대 %dms  추가 호출 평균 %.1f 최대 %d",
+                    s.name, group, edits.toFloat() / chars, edits, chars, editsSp.toFloat() / charsSp, ms / cases.size, maxMs, extra.toFloat() / cases.size, maxExtra))
             }
-            out(String.format(Locale.ROOT, "== %s CER(공백 무시)=%.3f (%d/%d)  CER(공백 포함)=%.3f  평균 %dms  최대 %dms  추가 호출 평균 %.1f 최대 %d",
-                s.name, edits.toFloat() / chars, edits, chars, editsSp.toFloat() / charsSp, ms / cases.size, maxMs, extra.toFloat() / cases.size, maxExtra))
             for ((file, ink) in unlabeled) {
                 val text = (InkPipeline(engine, s.config, defaultInkRules(s.config)).recognize(ink.items(), if (noPre) "" else ink.report.preContext, s.mode)
                     as? RecognitionOutcome.Text)?.text.orEmpty()

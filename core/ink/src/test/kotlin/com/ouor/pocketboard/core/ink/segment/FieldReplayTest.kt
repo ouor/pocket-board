@@ -82,6 +82,38 @@ class FieldReplayTest {
     }
 
     @Test
+    fun singles_stackedSyllables_neverSplitsOneSyllable() = runTest {
+        // 사용자가 따로 쓴 6~9획 표준 음절 10자 × 2바퀴(field/singles.tsv). 기기 기본값(6획)으로 녹화한 인식기 답으로 다시 돌린다
+        val singles = javaClass.getResource("/field/singles.tsv")!!.readText().lines().filter { it.isNotBlank() && !it.startsWith("#") }
+        assertEquals(20, singles.size)
+        var fired = 0
+        for (line in singles) {
+            val file = line.substringBefore('\t')
+            val items = load(file).items()
+            val recorded = Json.decodeFromString(InkReport.serializer(), javaClass.getResource("/field/recorded/$file")!!.readText())
+            assertEquals(file, InkConfig(), recorded.config)
+            val engine = RecordedInkEngine(items, recorded)
+            val r = replayInk(items, recorded, engine)
+            assertEquals(file, 0, engine.misses)
+            assertEquals(file, recorded.text, r.text)
+            val word = r.words.single()
+            assertEquals(file, 1, word.clusters.size)                       // 한 음절 = 한 묶음 그대로
+            assertTrue(file, "split/stacked-syllables" !in r.ruleIds)
+            val stacked = word.splits.filter { it.ruleId == "split/stacked-syllables" }
+            for (s in stacked) {
+                assertEquals(file, null, s.parts)
+                // 자른 두 조각을 나란히 읽은 1순위가 모두 음절 1개(2~3개가 아님)여서 안 나눴다
+                assertTrue("$file ${s.tries}", s.tries.isNotEmpty() && s.tries.all { it.reading?.length == 1 })
+                // 시험 호출의 실제 녹화 답과 같은지(가정이 아니라 녹화 내용 확인)
+                val tryCalls = word.calls.filter { c -> c.language == "ko" && c.strokes.size == word.strokes.size && c.dx.any { it != 0f } }
+                assertEquals(file, s.tries.map { it.reading }, tryCalls.map { it.candidates.firstOrNull()?.trim() })
+            }
+            if (stacked.isNotEmpty()) fired++
+        }
+        assertEquals(7, fired)   // 6~7획 묶음 7개(값×2·앉·했·많·쉽·뷁)에서 확인을 불렀고 하나도 안 나눴다
+    }
+
+    @Test
     fun stackedSyllables_realSingleSyllable_kept() = runTest {
         // 691193 의 "끊"(6획, 한 칸): 자를 자리 3곳 모두 "끊" 한 음절로 읽혀 나누지 않는다
         val file = "ink-1793166691193.json"
