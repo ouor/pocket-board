@@ -79,6 +79,21 @@ class InkRecordTest {
         assertEquals(r.words.map { it.clusters }, again.words.map { it.clusters })
     }
 
+    @Test
+    fun svg_showsStackedSyllablesSplit() = runTest {
+        // 한 칸에 세로획 10개(겹친 음절): 두 조각이 "가나"로 읽혀 나뉜다 → 묶음 칸 아래·규칙 줄에 규칙 id
+        val strokes = List(10) { InkItem.Stroke(it.toLong(), line(it * 10f, 0f, it * 10f, 100f, it * 120L)) }
+        val config = InkConfig(splitStrokeRatio = 5f)
+        var report: InkReport? = null
+        InkPipeline({ lang, s, _, _ -> if (lang == InkLanguage.KO && s.size == 10) listOf("가나") else emptyList() }, config, defaultInkRules(config))
+            .recognize(strokes, "", SegmentationMode.RULES) { report = it }
+        val svg = InkSvg.render(DevLogEntry.Ink.of(1L, strokes, report!!), "ok")
+        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(svg.byteInputStream())
+        val texts = (0 until doc.getElementsByTagName("text").length).map { doc.getElementsByTagName("text").item(it).textContent }
+        assertTrue(texts.toString(), "split stacked-syllables 가나 1/2" in texts && "split stacked-syllables 가나 2/2" in texts)
+        assertTrue(texts.toString(), texts.any { it.startsWith("rules:") && "split/stacked-syllables" in it })
+    }
+
     private fun line(x0: Float, y0: Float, x1: Float, y1: Float, t0: Long) =
         InkStroke((0..10).map { InkPoint(x0 + (x1 - x0) * it / 10, y0 + (y1 - y0) * it / 10, t0 + it * 10L) })
 }

@@ -58,11 +58,20 @@ data class InkSegmentStep(
 @Serializable
 data class InkMergeCheck(val cluster: Int, val boundary: String, val ko: List<String>, val merged: Boolean)
 
-/** Split 체인이 [target] 으로 나누라 한 [cluster]번째 묶음. [parts] null = 나누기 실패. */
+/**
+ * [ruleId] 규칙이 나누라 한 [cluster]번째 묶음. [parts] null = 나누기 실패.
+ * split/stroke-excess: [target] = 나눌 글자. split/stacked-syllables(읽기 전, [cluster] 는 그때 묶음 번호): [target] = 자른 두 조각을 읽은 1순위.
+ */
 @Serializable
-data class InkSplitAttempt(val cluster: Int, val target: String, val tries: List<InkSplitTry>, val parts: List<List<Int>>?)
+data class InkSplitAttempt(
+    val cluster: Int, val target: String, val tries: List<InkSplitTry>, val parts: List<List<Int>>?,
+    val ruleId: String = "split/stroke-excess",
+)
 
-/** 묶음 안 [start]부터 [length]획을 ko 로 읽은 1순위(없으면 null). */
+/**
+ * 묶음 안 [start]부터 [length]획을 ko 로 읽은 1순위(없으면 null).
+ * split/stacked-syllables 는 [start] 획 앞에서 자른 두 조각([length] = 뒤 조각 획 수)을 나란히 읽은 1순위.
+ */
 @Serializable
 data class InkSplitTry(val start: Int, val length: Int, val reading: String?)
 

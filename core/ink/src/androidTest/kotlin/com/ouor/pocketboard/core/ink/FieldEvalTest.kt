@@ -37,10 +37,11 @@ import org.junit.runner.RunWith
 class FieldEvalTest {
     private class Strategy(val name: String, val mode: SegmentationMode, val config: InkConfig = InkConfig())
 
-    /** 비교할 전략. 이름으로 고른다(-e strategies). legacy = 2026-10 현장 2차 전 기본값(S2 0.3, S5 없음). */
+    /** 비교할 전략. 이름으로 고른다(-e strategies). legacy = 2026-10 현장 2차 전 기본값(S2 0.3, S5 없음), noStacked = 겹친 음절 나누기 전(ab8f91e). */
     private val strategies = listOf(
         Strategy("rules", SegmentationMode.RULES),
-        Strategy("legacy", SegmentationMode.RULES, InkConfig(rightOfGapRatio = 0.3f, topLeftCornerRatio = 0f)),
+        Strategy("noStacked", SegmentationMode.RULES, InkConfig(stackedMinStrokes = 0)),
+        Strategy("legacy", SegmentationMode.RULES, InkConfig(rightOfGapRatio = 0.3f, topLeftCornerRatio = 0f, stackedMinStrokes = 0)),
         Strategy("raw", SegmentationMode.RAW),
         Strategy("hypothesis", SegmentationMode.HYPOTHESIS),
     )
@@ -85,7 +86,7 @@ class FieldEvalTest {
 
         for (s in strategies.filter { only == null || it.name in only }) {
             out("== ${s.name} (${s.mode.id}) ${s.config}")
-            var edits = 0; var chars = 0; var editsSp = 0; var charsSp = 0; var ms = 0L
+            var edits = 0; var chars = 0; var editsSp = 0; var charsSp = 0; var ms = 0L; var maxMs = 0L
             for ((file, truth, ink) in cases) {
                 val pipeline = InkPipeline(engine, s.config, defaultInkRules(s.config))
                 var report: InkReport? = null
@@ -95,12 +96,12 @@ class FieldEvalTest {
                 val took = SystemClock.elapsedRealtime() - t0
                 val e = distance(text.filterNot(Char::isWhitespace), truth.filterNot(Char::isWhitespace))
                 val eSp = distance(text.trim(), truth)
-                edits += e; chars += truth.count { !it.isWhitespace() }; editsSp += eSp; charsSp += truth.length; ms += took
-                out(String.format(Locale.ROOT, "%-24s n=%-3d %5dms  e=%d  %-14s | %s", file, ink.strokes.size, took, e, "\"$text\"", truth))
+                edits += e; chars += truth.count { !it.isWhitespace() }; editsSp += eSp; charsSp += truth.length; ms += took; maxMs = maxOf(maxMs, took)
+                out(String.format(Locale.ROOT, "%-24s n=%-3d %5dms  e=%d/%d  %-14s | %s", file, ink.strokes.size, took, e, eSp, "\"$text\"", truth))
                 if (dump && report != null) out("REPORT $file ${json.encodeToString(InkReport.serializer(), report!!)}")
             }
-            out(String.format(Locale.ROOT, "== %s CER(공백 무시)=%.3f (%d/%d)  CER(공백 포함)=%.3f  평균 %dms",
-                s.name, edits.toFloat() / chars, edits, chars, editsSp.toFloat() / charsSp, ms / cases.size))
+            out(String.format(Locale.ROOT, "== %s CER(공백 무시)=%.3f (%d/%d)  CER(공백 포함)=%.3f  평균 %dms  최대 %dms",
+                s.name, edits.toFloat() / chars, edits, chars, editsSp.toFloat() / charsSp, ms / cases.size, maxMs))
         }
         recognizer.close()
     }

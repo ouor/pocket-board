@@ -20,6 +20,8 @@ import com.ouor.pocketboard.core.ink.rules.RightOfRule
 import com.ouor.pocketboard.core.ink.rules.SameSpotRestartRule
 import com.ouor.pocketboard.core.ink.rules.SegmentInput
 import com.ouor.pocketboard.core.ink.rules.SplitInput
+import com.ouor.pocketboard.core.ink.rules.StackInput
+import com.ouor.pocketboard.core.ink.rules.isHangulSyllable
 import com.ouor.pocketboard.core.ink.rules.TextInput
 import com.ouor.pocketboard.core.ink.rules.defaultCandidate
 import com.ouor.pocketboard.core.ink.rules.gap
@@ -95,7 +97,7 @@ class InkPipeline(
         } else {
             val segmented = segmenter.clusters(strokes).also { trace(it, trace, w) }
             val checked = if (mode == SegmentationMode.HYPOTHESIS) HYPOTHESIS_BOUNDARIES else RULES_BOUNDARIES
-            clusters = mergeHypotheses(segmented, pre, ruleIds, checked, w)
+            clusters = unstack(mergeHypotheses(segmented, pre, ruleIds, checked, w), pre, ruleIds, trace, w)
             chosen = read(relayout(clusters, config.relayoutGapRatio, config.minCharSize), pre, w)
         }
         chosen.ruleId?.let(ruleIds::add)
@@ -171,7 +173,7 @@ class InkPipeline(
             val v = rules.split.firstMatch(SplitInput(c, text[i].toString())) { "" }
             val tries = if (w != null && v.value.isNotEmpty()) ArrayList<InkSplitTry>() else null
             val parts = if (v.value.isEmpty()) null else cut(c, v.value, tries)
-            if (w != null && tries != null) w.splits += InkSplitAttempt(i, v.value, tries, parts?.map(w::ids))
+            if (w != null && tries != null) w.splits += InkSplitAttempt(i, v.value, tries, parts?.map(w::ids), v.ruleId.orEmpty())
             if (v.value.isNotEmpty()) trace.append(" | split#").append(i).append(' ').append(v.value).append(" x").append(parts?.size ?: 0)
             if (parts != null) { out += parts; ruleId = v.ruleId; outText.append(v.value.repeat(parts.size)) } else { out += c; outText.append(text[i]) }
         }
@@ -229,7 +231,53 @@ class InkPipeline(
         return out.map { it.strokes }
     }
 
+    /**
+     * Split(읽기 전): [InkRules.stacked] 가 겹친 음절이라 한 묶음을 둘로 나눈다. 자를 자리 후보는 직전 획 끝에서 새 획 시작으로
+     * 왼쪽 위로 많이 되돌아간 순(다음 음절은 왼쪽 위 초성부터), 조각마다 2획 이상. 후보마다 두 조각을 재배치해 ko 로 한 번 읽어
+     * 1순위가 완성 음절 2~3개(10~14획 묶음에 든 음절 수; 3이면 한 조각이 아직 2음절)면 그 자리에서 자른다. 나뉜 조각도 다시 확인한다(3음절 이상). 호출은 단어당 [InkConfig.maxSplitCalls] 까지.
+     */
+    private suspend fun unstack(
+        clusters: List<List<InkStroke>>, pre: String, ruleIds: MutableSet<String>, trace: StringBuilder, w: WordRecorder?,
+    ): List<List<InkStroke>> {
+        if (rules.stacked.isEmpty()) return clusters
+        val out = ArrayList<List<InkStroke>>()
+        val todo = ArrayDeque(clusters)
+        var calls = 0
+        while (todo.isNotEmpty()) {
+            val c = todo.removeFirst()
+            val v = rules.stacked.firstMatch(StackInput(c)) { false }
+            if (!v.value) { out += c; continue }
+            val cuts = (2..c.size - 2).sortedByDescending { k ->
+                val end = c[k - 1].points.last(); val start = c[k].points.first()
+                (end.x - start.x) + (end.y - start.y)
+            }.take(STACKED_CUTS)
+            val tries = if (w != null) ArrayList<InkSplitTry>() else null
+            var parts: List<List<InkStroke>>? = null
+            var read = ""
+            for (k in cuts) {
+                if (calls >= config.maxSplitCalls) break
+                calls++
+                val pair = listOf(c.subList(0, k), c.subList(k, c.size))
+                val ink = relayout(pair, config.relayoutGapRatio, config.minCharSize)
+                val ko = engine.recognize(InkLanguage.KO, ink, pre, ink.bounds())
+                w?.call(InkLanguage.KO, ink, pre, ko)
+                val top = ko.firstOrNull()?.trim().orEmpty()
+                tries?.add(InkSplitTry(k, c.size - k, top))
+                if (top.length in 2..3 && top.all { it.isHangulSyllable() }) { parts = pair; read = top; break }
+            }
+            if (w != null && tries != null && tries.isNotEmpty()) w.splits += InkSplitAttempt(out.size, read, tries, parts?.map(w::ids), v.ruleId.orEmpty())
+            trace.append(" | stacked#").append(out.size).append(' ').append(read.ifEmpty { "-" })
+            if (parts == null) { out += c; continue }
+            v.ruleId?.let(ruleIds::add)
+            todo.addFirst(parts[1]); todo.addFirst(parts[0])
+        }
+        return out
+    }
+
     companion object {
+        /** 겹친 음절 묶음 하나에서 시험할 자를 자리 수. */
+        private const val STACKED_CUTS = 3
+
         /** ML Kit 은 마지막 20자만 쓴다(ink.md §2.3). */
         const val PRE_CONTEXT_MAX = 20
 

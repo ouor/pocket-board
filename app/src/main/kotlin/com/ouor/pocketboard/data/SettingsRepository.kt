@@ -86,6 +86,7 @@ internal object SettingsCodec {
     private val INK_MAX_HYPOTHESIS = intPreferencesKey("ink_max_hypothesis_calls")
     private val INK_SPLIT_STROKE_RATIO = floatPreferencesKey("ink_split_stroke_ratio")
     private val INK_MAX_SPLIT = intPreferencesKey("ink_max_split_calls")
+    private val INK_STACKED_MIN = intPreferencesKey("ink_stacked_min_strokes")
     private val TAP_SLOP = floatPreferencesKey("gesture_tap_slop_dp")
     private val TAP_MAX = longPreferencesKey("gesture_tap_max_ms")
     private val MULTI_TAP_GAP = longPreferencesKey("gesture_multi_tap_gap_ms")
@@ -137,6 +138,7 @@ internal object SettingsCodec {
                     maxHypothesisCalls = (p[INK_MAX_HYPOTHESIS] ?: i.maxHypothesisCalls).coerceIn(InkRanges.maxHypothesisCalls),
                     splitStrokeRatio = (p[INK_SPLIT_STROKE_RATIO] ?: i.splitStrokeRatio).coerceIn(InkRanges.splitStrokeRatio),
                     maxSplitCalls = (p[INK_MAX_SPLIT] ?: i.maxSplitCalls).coerceIn(InkRanges.maxSplitCalls),
+                    stackedMinStrokes = (p[INK_STACKED_MIN] ?: i.stackedMinStrokes).coerceIn(InkRanges.stackedMinStrokes),
                 ),
             ),
             gesture = GestureConfig(
@@ -183,6 +185,7 @@ internal object SettingsCodec {
         p[INK_MAX_HYPOTHESIS] = s.ink.config.maxHypothesisCalls
         p[INK_SPLIT_STROKE_RATIO] = s.ink.config.splitStrokeRatio
         p[INK_MAX_SPLIT] = s.ink.config.maxSplitCalls
+        p[INK_STACKED_MIN] = s.ink.config.stackedMinStrokes
         p[TAP_SLOP] = s.gesture.tapSlopDp
         p[TAP_MAX] = s.gesture.tapMaxMs
         p[MULTI_TAP_GAP] = s.gesture.multiTapGapMs
@@ -209,4 +212,5 @@ object InkRanges {
     val maxHypothesisCalls = 0..10
     val splitStrokeRatio = 1f..5f
     val maxSplitCalls = 0..12
+    val stackedMinStrokes = 0..30
 }

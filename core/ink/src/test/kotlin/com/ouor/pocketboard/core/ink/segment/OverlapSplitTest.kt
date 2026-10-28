@@ -92,8 +92,8 @@ class OverlapSplitTest {
 
     private fun pipeline(config: InkConfig = legacy) = InkPipeline(engine, config, defaultInkRules(config)) { logs += it }
 
-    /** Split·right-of 합침 확인 장치만 보려고 S2 를 옛 값(0.3)으로, S5(왼쪽 위 되돌아감)를 끈다. 기본값 동작은 defaults_* 테스트. */
-    private val legacy = InkConfig(rightOfGapRatio = 0.3f, topLeftCornerRatio = 0f)
+    /** Split·right-of 합침 확인 장치만 보려고 S2 를 옛 값(0.3)으로, S5(왼쪽 위 되돌아감)·겹친 음절 나누기를 끈다. 기본값 동작은 defaults_* 테스트. */
+    private val legacy = InkConfig(rightOfGapRatio = 0.3f, topLeftCornerRatio = 0f, stackedMinStrokes = 0)
 
     private suspend fun run(glyphs: List<Glyph>, xs: List<Float>, config: InkConfig = legacy) =
         pipeline(config).recognize(write(glyphs, xs), "", SegmentationMode.RULES) as RecognitionOutcome.Text
@@ -194,7 +194,8 @@ class OverlapSplitTest {
             val out = run(listOf(glyph), listOf(0f), InkConfig())
             assertEquals(text, out.text)
             assertEquals(text, listOf("candidate/ko-hangul"), out.ruleIds - "segment/first")   // 끊김·나누기·합침 없음
-            assertEquals(text, 2, calls.size)
+            // 뷁(13획, 한 칸)은 겹친 음절 후보라 자를 자리 3곳을 읽어 보고(음절 2~3개로 안 읽혀) 그대로 둔다
+            assertEquals(text, if (glyph === BWELK) 2 + 3 else 2, calls.size)
         }
         // 옛 S2(0.3): 뷁의 ㅂ 둘째 세로획이 right-of 로 끊겨 합침 확인 1회로 되돌렸다
         calls.clear()

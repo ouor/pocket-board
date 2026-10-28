@@ -51,10 +51,10 @@ object InkSvg {
                     else -> "(split)"
                 }
                 cl.drop(1).forEach { i -> newAt(i)?.takeIf { it.newChar }?.let { labels += "merged ${short(it.ruleId)}@$i" } }
-                w.splits.forEach { s -> val parts = s.parts ?: return@forEach; parts.indexOf(cl).takeIf { it >= 0 }?.let { labels += "split ${s.target} ${it + 1}/${parts.size}" } }
+                w.splits.forEach { s -> val parts = s.parts ?: return@forEach; parts.indexOf(cl).takeIf { it >= 0 }?.let { labels += "split ${short(s.ruleId)} ${s.target} ${it + 1}/${parts.size}" } }
                 clusters += Cluster(cl.filter { it < n }, c, labels)
             }
-            w.splits.filter { it.parts == null }.forEach { notes += "w$wi split#${it.cluster} ${it.target} failed" }
+            w.splits.filter { it.parts == null }.forEach { notes += "w$wi ${short(it.ruleId)}#${it.cluster} ${it.target} failed" }
         }
 
         val sb = StringBuilder()

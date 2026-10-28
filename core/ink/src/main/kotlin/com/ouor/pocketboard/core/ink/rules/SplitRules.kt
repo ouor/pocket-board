@@ -1,6 +1,7 @@
 package com.ouor.pocketboard.core.ink.rules
 
 import com.ouor.pocketboard.core.common.rule.Rule
+import com.ouor.pocketboard.core.ink.segment.bounds
 
 // 출력 = 묶음을 다시 나눌 목표 글자(앞에서부터 이 글자로 읽히는 조각으로 자른다). 기본 "" = 그대로.
 
@@ -14,6 +15,26 @@ class StrokeExcessSplitRule(private val config: InkConfig) : Rule<SplitInput, St
     override fun apply(input: SplitInput): String? {
         val need = hangulStrokes(input.char) ?: return null
         return input.char.takeIf { input.strokes.size >= need * config.splitStrokeRatio }
+    }
+}
+
+/**
+ * 겹친 음절(읽기 전): 묶음이 글자 하나 넓이인데 획이 [InkConfig.stackedMinStrokes] 이상이면 true(음절 2개 이상이 겹침).
+ * 현장 3차(한 음절씩 빠르게 겹쳐 씀): "상담"·"마트에" 가 한 묶음에 들어가 ML Kit 이 한 음절("학"·"토")로 읽어 음절이 빠졌다.
+ * 자를 자리는 파이프라인이 ML Kit 으로 고른다(InkPipeline.unstack). 줄(이어 쓴 음절)은 가로로 길어 해당 없다.
+ */
+class StackedSyllablesRule(private val config: InkConfig) : Rule<StackInput, Boolean> {
+    override val id = ID
+    override fun apply(input: StackInput): Boolean? {
+        if (config.stackedMinStrokes == 0 || input.strokes.size < config.stackedMinStrokes) return null
+        val box = input.strokes.bounds()
+        return true.takeIf { box.width <= box.height * STACKED_MAX_ASPECT }
+    }
+
+    companion object {
+        const val ID = "split/stacked-syllables"
+        /** 글자 하나 넓이: 음절은 대략 정사각형(현장 겹친 묶음 0.8~1.0), 이어 쓴 2음절 줄은 1.9 이상. 그 사이. */
+        const val STACKED_MAX_ASPECT = 1.4f
     }
 }
 

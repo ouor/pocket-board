@@ -50,6 +50,38 @@ class InkPipelineTest {
         assertTrue("text/trim-leading" in out.ruleIds)
     }
 
+    // 겹친 음절: 한 칸(가로 90, 세로 100)에 세로획 10개를 쉼 없이(120ms) 왼→오로. 분할 규칙은 끊지 않는다
+    private val stacked = List(10) { line(it * 10f, 0f, it * 10f, 100f, it * 120L) }
+    // 읽기 뒤 Split(stroke-excess)이 호출 수를 흐리지 않게 배수를 최대로
+    private val noExcess = InkConfig(splitStrokeRatio = 5f)
+    private val noExcessPipeline = InkPipeline(engine, noExcess, defaultInkRules(noExcess))
+
+    @Test
+    fun stackedSyllables_readsTwoSyllables_splitsBeforeFinalRead() = runTest {
+        answer = { c -> if (c.lang == InkLanguage.KO) listOf(if (c.strokes.size == 10) "가나" else "가") else emptyList() }
+        val out = noExcessPipeline.recognize(stacked.map { stroke(it) }, "", SegmentationMode.RULES)
+
+        assertEquals("가나", (out as RecognitionOutcome.Text).text)
+        assertTrue(out.ruleIds.toString(), "split/stacked-syllables" in out.ruleIds)
+        assertEquals(3, calls.size)                                   // 확인 1(두 조각 나란히, 10획) + 최종 ko·en
+        assertEquals(10, calls.first().strokes.size)
+    }
+
+    @Test
+    fun stackedSyllables_oneSyllableOrJamo_keepsCluster_triesBounded() = runTest {
+        for (reading in listOf("가", "ㄱㄴ", "가나다라")) {
+            calls.clear()
+            answer = { c -> if (c.lang == InkLanguage.KO) listOf(reading) else emptyList() }
+            val out = noExcessPipeline.recognize(stacked.map { stroke(it) }, "", SegmentationMode.RULES)
+            assertTrue(reading, "split/stacked-syllables" !in (out as RecognitionOutcome.Text).ruleIds)
+            assertEquals(reading, 3 + 2, calls.size)                  // 자를 자리 3곳 + 최종 ko·en
+        }
+        calls.clear()
+        val capped = noExcess.copy(maxSplitCalls = 1)
+        InkPipeline(engine, capped, defaultInkRules(capped)).recognize(stacked.map { stroke(it) }, "", SegmentationMode.RULES)
+        assertEquals(1 + 2, calls.size)                               // 단어당 상한
+    }
+
     @Test
     fun allWordsFail_isEmpty() = runTest {
         assertEquals(RecognitionOutcome.Empty, pipeline.recognize(listOf(stroke(first)), "", SegmentationMode.RULES))

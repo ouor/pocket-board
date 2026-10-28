@@ -33,8 +33,13 @@ data class InkConfig(
     val maxHypothesisCalls: Int = 4,
     /** Split: 묶음 획 수 ≥ 읽힌 한글 글자의 표준 획 수 × 이 값이면 같은 글자를 같은 자리에 겹쳐 쓴 것으로 본다. */
     val splitStrokeRatio: Float = 2f,
-    /** Split: 단어 하나당 나눌 자리를 찾는 추가 인식 호출 상한(지연 예산). */
+    /** Split: 단어 하나당 나눌 자리를 찾는 추가 인식 호출 상한(지연 예산). 겹친 음절 나누기(split/stacked-syllables)도 따로 같은 상한. */
     val maxSplitCalls: Int = 8,
+    /**
+     * 겹친 음절(읽기 전): 글자 하나 넓이(가로 ≤ 세로 × [STACKED_MAX_ASPECT])인 묶음의 획 수가 이 값 이상이면 음절 2개 이상이
+     * 겹친 것으로 보고 나눌 자리를 찾는다(0 = 끔). 자막 말뭉치 음절의 98.4% 가 표준 9획 이하(흘림은 더 적다).
+     */
+    val stackedMinStrokes: Int = 10,
 ) {
     // 범위는 docs/core/ink.md §3 표와 같다. 설정 저장소(:app)가 범위 밖 값을 넘기면 프로그래머 오류.
     init {
@@ -50,6 +55,7 @@ data class InkConfig(
         require(maxHypothesisCalls in 0..10) { "maxHypothesisCalls $maxHypothesisCalls" }
         require(splitStrokeRatio in 1f..5f) { "splitStrokeRatio $splitStrokeRatio" }
         require(maxSplitCalls in 0..12) { "maxSplitCalls $maxSplitCalls" }
+        require(stackedMinStrokes in 0..30) { "stackedMinStrokes $stackedMinStrokes" }
     }
 
     fun charSize(height: Float) = maxOf(height, minCharSize)
@@ -65,6 +71,9 @@ data class CandidateInput(val ko: List<String>, val en: List<String>)
 
 /** Merge 단계(B·C) 입력: 끊긴 두 묶음을 합쳐 ko 로 인식한 후보. */
 data class MergeInput(val ko: List<String>)
+
+/** 겹친 음절 나누기(읽기 전) 입력: 분할·합침 뒤 글자 묶음 하나. */
+data class StackInput(val strokes: List<InkStroke>)
 
 /** Split 단계 입력: 인식 결과와 1:1 로 대응한 글자 묶음 하나와 그 묶음이 읽힌 글자. */
 data class SplitInput(val strokes: List<InkStroke>, val char: String)

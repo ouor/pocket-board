@@ -29,10 +29,10 @@ class FieldReplayTest {
     private fun load(name: String): FieldInk =
         Json { ignoreUnknownKeys = true }.decodeFromString(FieldInk.serializer(), javaClass.getResource("/field/$name")!!.readText())
 
-    /** 녹화 당시 분할(S5 왼쪽 위 되돌아감 없음)로 다시 돌린다: 그 뒤 단계(Split·Text)를 같은 인식기 답으로 확인. */
+    /** 녹화 당시 분할(S5 왼쪽 위 되돌아감·겹친 음절 나누기 없음)로 다시 돌린다: 그 뒤 단계(Split·Text)를 같은 인식기 답으로 확인. */
     private suspend fun replay(name: String): Pair<InkReport, RecordedInkEngine> {
         val f = load(name)
-        val report = f.report.copy(config = f.report.config.copy(topLeftCornerRatio = 0f))
+        val report = f.report.copy(config = f.report.config.copy(topLeftCornerRatio = 0f, stackedMinStrokes = 0))
         val engine = RecordedInkEngine(f.items(), report)
         return replayInk(f.items(), report, engine) to engine
     }
@@ -55,6 +55,23 @@ class FieldReplayTest {
             assertEquals(file, 0, engine.misses)
             assertEquals(file, recorded.text, again.text)
             assertEquals(file, recorded.words.map { it.clusters }, again.words.map { it.clusters })
+        }
+    }
+
+    @Test
+    fun stackedSyllables_fieldCases_recoverDroppedSyllables() = runTest {
+        // 현장 3차: "사람이면" 의 이·면 이 12획 한 묶음 → "사람면". 겹친 음절 나누기 뒤 "사람이면"
+        for ((file, expected) in listOf("ink-1793166626969.json" to "대한민국 사람이면 10일공", "ink-1793166672370.json" to "요즘이트에전화 하면상학원연결안되고 챗물만문하고")) {
+            val items = load(file).items()
+            val recorded = Json.decodeFromString(InkReport.serializer(), javaClass.getResource("/field/recorded/$file")!!.readText())
+            val engine = RecordedInkEngine(items, recorded)
+            val r = replayInk(items, recorded, engine)
+            assertEquals(file, expected, r.text)
+            assertEquals(file, 0, engine.misses)
+            assertTrue(file, "split/stacked-syllables" in r.ruleIds)
+            val stacked = r.words.single().splits.filter { it.ruleId == "split/stacked-syllables" }
+            assertTrue(file, stacked.isNotEmpty() && stacked.all { it.parts != null })
+            assertTrue(file, stacked.sumOf { it.tries.size } <= InkConfig().maxSplitCalls)
         }
     }
 

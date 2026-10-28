@@ -12,7 +12,7 @@ import org.junit.Test
 class SettingsCodecTest {
     @Test
     fun inkConfigRoundTrips() {
-        val s = AppSettings(ink = AppSettings().ink.copy(config = InkConfig(restartPauseMs = 425, newCharPauseMs = 900, rightOfGapRatio = 1.5f, topLeftCornerRatio = 0.35f, topLeftBackRatio = 0.6f)))
+        val s = AppSettings(ink = AppSettings().ink.copy(config = InkConfig(restartPauseMs = 425, newCharPauseMs = 900, rightOfGapRatio = 1.5f, topLeftCornerRatio = 0.35f, topLeftBackRatio = 0.6f, stackedMinStrokes = 12)))
         val p = mutablePreferencesOf()
         SettingsCodec.encode(s, p)
         assertEquals(s, SettingsCodec.decode(p))

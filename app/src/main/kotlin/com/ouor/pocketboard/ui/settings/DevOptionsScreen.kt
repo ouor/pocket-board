@@ -130,6 +130,7 @@ fun DevOptionsScreen(
             Num("C단계 추가 인식 상한", i.maxHypothesisCalls.toDouble(), 1.0, InkRanges.maxHypothesisCalls.let { it.first.toDouble()..it.last.toDouble() }, "회", 0) { v -> ink { it.copy(maxHypothesisCalls = v.toInt()) } }
             Num("겹친 반복 글자 획 수 배수", i.splitStrokeRatio.toDouble(), 0.25, InkRanges.splitStrokeRatio.f(), "×", 2) { v -> ink { it.copy(splitStrokeRatio = v.toFloat()) } }
             Num("겹친 반복 나누기 인식 상한", i.maxSplitCalls.toDouble(), 1.0, InkRanges.maxSplitCalls.let { it.first.toDouble()..it.last.toDouble() }, "회", 0) { v -> ink { it.copy(maxSplitCalls = v.toInt()) } }
+            Num("겹친 음절 나누기 획 수", i.stackedMinStrokes.toDouble(), 1.0, InkRanges.stackedMinStrokes.let { it.first.toDouble()..it.last.toDouble() }, "획", 0) { v -> ink { it.copy(stackedMinStrokes = v.toInt()) } }
         }
 
         SettingGroup("제스처 판정(A36)") {
