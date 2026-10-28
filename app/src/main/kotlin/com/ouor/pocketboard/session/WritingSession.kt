@@ -2,6 +2,7 @@ package com.ouor.pocketboard.session
 
 import android.util.Log
 import com.ouor.pocketboard.core.common.ink.InkItem
+import com.ouor.pocketboard.core.common.ink.InkStroke
 import com.ouor.pocketboard.core.gesture.Action
 import com.ouor.pocketboard.core.gesture.GestureConfig
 import com.ouor.pocketboard.core.gesture.GestureMapping
@@ -81,6 +82,21 @@ class WritingSession(
      */
     val preview: StateFlow<String?> = _preview.asStateFlow()
 
+    private val _strokes = MutableStateFlow<List<InkStroke>>(emptyList())
+
+    /** 아직 보내지 않은 획(버퍼가 원본). 취소된 탭·B7·덩어리 지우기·전송이 곧바로 반영된다. 화면 잉크용. */
+    val strokes: StateFlow<List<InkStroke>> = _strokes.asStateFlow()
+
+    private val _lastSent = MutableStateFlow<List<String>>(emptyList())
+
+    /** 최근 보낸 글(Done·Aborted), 오래된 것부터 최대 [LAST_SENT_MAX]개. */
+    val lastSent: StateFlow<List<String>> = _lastSent.asStateFlow()
+
+    private val _edgeBandDp = MutableStateFlow(0f)
+
+    /** 실제 판정에 쓰는 가장자리 띠(dp, 시스템 제스처 인셋 포함). 이 안쪽에서 시작한 획만 글씨가 된다. */
+    val edgeBandDp: StateFlow<Float> = _edgeBandDp.asStateFlow()
+
     private data class Surface(val widthDp: Float, val heightDp: Float, val edgeInsetDp: Float)
 
     init {
@@ -88,6 +104,7 @@ class WritingSession(
             for (e in events) {
                 if (e is Event.Act && e.action == Action.SEND) previewJob?.cancel() // 전송과 인식을 겹치지 않음
                 process(e)
+                _strokes.value = buffer.mapNotNull { (it as? InkItem.Stroke)?.stroke }
                 refreshPreview()
             }
         }
@@ -170,6 +187,7 @@ class WritingSession(
 
     private fun rebuildGestures() {
         timer?.cancel()
+        _edgeBandDp.value = effectiveConfig().edgeBandDp
         gestures = newRecognizer(effectiveConfig()).also { it.setMappedGestures(mapping.value.actions.keys) }
     }
 
@@ -247,7 +265,10 @@ class WritingSession(
             is RecognitionOutcome.Text -> {
                 val plan = keyInput.text(outcome.text)
                 val result = send(plan, HapticPattern.SENT)
-                if (result !is SendResult.NotConnected) buffer.subList(0, items.size).clear()
+                if (result !is SendResult.NotConnected) {
+                    buffer.subList(0, items.size).clear()
+                    _lastSent.value = (_lastSent.value + outcome.text).takeLast(LAST_SENT_MAX)
+                }
                 log.send(outcome.text, outcome.ruleIds, plan.ruleIds, result.toString())
             }
             RecognitionOutcome.Empty, RecognitionOutcome.ModelNotReady -> {
@@ -288,6 +309,7 @@ class WritingSession(
     companion object {
         /** 마지막 획 뒤 미리보기 인식까지 기다리는 시간. 실기기에서 조정. */
         const val PREVIEW_DEBOUNCE_MS = 400L
+        const val LAST_SENT_MAX = 3
         private const val TAG = "pb.session"
     }
 }

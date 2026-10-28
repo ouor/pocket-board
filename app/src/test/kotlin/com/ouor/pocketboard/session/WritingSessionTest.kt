@@ -128,6 +128,30 @@ class WritingSessionTest {
         assertEquals(emptyList<List<Long>>(), (off.ink as FakeInk).recognized)
     }
 
+    @Test
+    fun strokesMirrorBuffer_lastSentOnlyWhenSent() = runTest {
+        val f = Fixture(this)
+        f.stroke(1)
+        f.stroke(2)
+        runCurrent()
+        assertEquals(2, f.session.strokes.value.size)
+        f.session.perform(Action.BACKSPACE) // B7
+        runCurrent()
+        assertEquals(1, f.session.strokes.value.size)
+
+        f.hid.result = { SendResult.NotConnected }
+        f.session.perform(Action.SEND)
+        runCurrent()
+        assertEquals(1, f.session.strokes.value.size) // E1: 획 유지
+        assertEquals(emptyList<String>(), f.session.lastSent.value)
+
+        f.hid.result = { SendResult.Done(it) }
+        f.session.perform(Action.SEND)
+        runCurrent()
+        assertEquals(emptyList<Any>(), f.session.strokes.value)
+        assertEquals(listOf("안녕"), f.session.lastSent.value)
+    }
+
     /**
      * 현장 버그 재현: 실제 판정기 + 실제 InkPipeline(가짜 엔진)으로 400x800dp 표면, 제스처 인셋 24dp 에서
      * 3획 단어 → 더블 탭. 손가락 touchMajor 는 문서 가정(8dp)과 실기기 물리값(약 7mm ≈ 45dp) 둘 다.
