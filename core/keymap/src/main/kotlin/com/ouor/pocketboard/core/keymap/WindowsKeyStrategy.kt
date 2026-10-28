@@ -14,10 +14,12 @@ internal interface KeyStrategy : OsKeyStrategy {
 /**
  * Windows + Microsoft 한국어 IME(US 배치). HID usage 는 Keyboard page 0x07.
  *
- * A21 기본값 근거(실기기 판정 전 가정, research/keymap.md §2.3~2.5):
+ * A21 기본값 근거(research/keymap.md §2.3~2.5):
  * - 한/영 키 LANG1(0x90): Windows 한국어 레이아웃에서 VK_HANGUL. 레이어 드라이버에 따라 안 되면 RIGHT_ALT.
  * - 조합 확정 TOGGLE_TWICE: 텍스트 흔적이 없고 앱 자동완성을 건드리지 않는다. 유실 시 한/영이 어긋날 수 있어 SPACE_BACKSPACE 를 대체로 둔다.
- * - 영문 CAPS_LOCK: 한/영 상태를 몰라도 영문이 나온다는 가정(Q1). 틀리면 MODE_SWITCH.
+ * - 영문 MODE_SWITCH: Q1 실기기(Windows 11, MS 한국어 IME)에서 CAPS_LOCK 가정이 틀렸다. 한글 모드는 Caps 를 무시해
+ *   "Hello" 가 "ㅗ띠ㅣㅒ" 로 나왔다. 그래서 추적한 한/영 상태로 영문 모드로 바꾼 뒤 친다. 추정이 틀리면 재동기화(F06).
+ *   CAPS_LOCK 은 Caps 가 IME 를 우회하는 호스트용으로 남긴다.
  */
 internal class WindowsKeyStrategy : KeyStrategy {
     override val os = HostOs.WINDOWS

@@ -69,7 +69,7 @@ data class KeymapSettings(
     val os: HostOs = HostOs.WINDOWS,
     val imeToggle: ImeToggleKey = ImeToggleKey.LANG1,
     val commit: CommitMethod = CommitMethod.TOGGLE_TWICE,
-    val latin: LatinMethod = LatinMethod.CAPS_LOCK,
+    val latin: LatinMethod = LatinMethod.MODE_SWITCH,
 )
 
 enum class HostOs(val id: String) { WINDOWS("windows") }
@@ -80,5 +80,8 @@ enum class ImeToggleKey(val id: String) { LANG1("lang1"), RIGHT_ALT("right_alt")
 /** 조합 확정 방식(A21). */
 enum class CommitMethod(val id: String) { TOGGLE_TWICE("toggle_twice"), SPACE_BACKSPACE("space_backspace") }
 
-/** 영문 입력 방식. MODE_SWITCH = 추적 상태 기준으로 영문 모드로 바꾼 뒤 입력(Caps Lock 대체). */
+/**
+ * 영문 입력 방식. MODE_SWITCH(기본) = 추적 상태 기준으로 영문 모드로 바꾼 뒤 입력.
+ * CAPS_LOCK = Caps 를 켜고 IME 를 우회한다는 가정. Windows MS 한국어 IME 실기기에서 틀림(한글 모드는 Caps 무시).
+ */
 enum class LatinMethod(val id: String) { CAPS_LOCK("caps_lock"), MODE_SWITCH("mode_switch") }

@@ -3,7 +3,9 @@ package com.ouor.pocketboard.data
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.ouor.pocketboard.core.ink.rules.InkConfig
+import com.ouor.pocketboard.core.keymap.LatinMethod
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -25,6 +27,16 @@ class SettingsCodecTest {
         val c = SettingsCodec.decode(p).ink.config
         assertEquals(2000L, c.restartPauseMs)
         assertEquals(0f, c.restartOverlapRatio)
+    }
+
+    @Test
+    fun oldStoredCapsLockDefaultIsDroppedForModeSwitch() {
+        val p = mutablePreferencesOf(stringPreferencesKey("keymap_latin") to "caps_lock")
+        val s = SettingsCodec.decode(p)
+        assertEquals(LatinMethod.MODE_SWITCH, s.keymap.latin)
+        SettingsCodec.encode(s.copy(keymap = s.keymap.copy(latin = LatinMethod.CAPS_LOCK)), p)
+        assertEquals(null, p[stringPreferencesKey("keymap_latin")])
+        assertEquals(LatinMethod.CAPS_LOCK, SettingsCodec.decode(p).keymap.latin) // 새로 고른 값은 유지
     }
 
     @Test

@@ -66,7 +66,9 @@ internal object SettingsCodec {
     private val HOST_OS = stringPreferencesKey("host_os")
     private val IME_TOGGLE = stringPreferencesKey("keymap_ime_toggle")
     private val COMMIT = stringPreferencesKey("keymap_commit")
-    private val LATIN = stringPreferencesKey("keymap_latin")
+    // v2: 옛 키에는 encode 가 늘 써 둔 옛 기본값 caps_lock 이 남아 있어 사용자 선택과 구분이 안 된다. 버리고 새 기본값(MODE_SWITCH)을 쓴다.
+    private val LATIN = stringPreferencesKey("keymap_latin_v2")
+    private val LATIN_V1 = stringPreferencesKey("keymap_latin")
     private val SEGMENTATION = stringPreferencesKey("ink_segmentation")
     private val INK_RESTART_PAUSE = longPreferencesKey("ink_restart_pause_ms")
     private val INK_RESTART_OVERLAP = floatPreferencesKey("ink_restart_overlap_ratio")
@@ -149,6 +151,7 @@ internal object SettingsCodec {
         p[IME_TOGGLE] = s.keymap.imeToggle.id
         p[COMMIT] = s.keymap.commit.id
         p[LATIN] = s.keymap.latin.id
+        p.remove(LATIN_V1)
         p[SEGMENTATION] = s.ink.segmentation.id
         p[INK_RESTART_PAUSE] = s.ink.config.restartPauseMs
         p[INK_RESTART_OVERLAP] = s.ink.config.restartOverlapRatio
