@@ -1,5 +1,6 @@
 package com.ouor.pocketboard.session
 
+import android.util.Log
 import com.ouor.pocketboard.core.common.ink.InkItem
 import com.ouor.pocketboard.core.gesture.Action
 import com.ouor.pocketboard.core.gesture.GestureConfig
@@ -11,6 +12,7 @@ import com.ouor.pocketboard.core.gesture.HapticPattern
 import com.ouor.pocketboard.core.gesture.Haptics
 import com.ouor.pocketboard.core.gesture.TouchAction
 import com.ouor.pocketboard.core.gesture.TouchSample
+import com.ouor.pocketboard.core.gesture.engine.coerced
 import com.ouor.pocketboard.core.hid.HidKeyboard
 import com.ouor.pocketboard.core.hid.HidState
 import com.ouor.pocketboard.core.hid.SendResult
@@ -150,8 +152,12 @@ class WritingSession(
         for (o in step.outputs) when (o) {
             is GestureOutput.StrokeCompleted -> events.trySend(Event.AddStroke(InkItem.Stroke(o.id, o.stroke)))
             is GestureOutput.StrokeRetracted -> events.trySend(Event.Retract(o.id))
-            is GestureOutput.Detected -> mapping.value.actions[o.gesture]?.let { events.trySend(Event.Act(it)) }
+            is GestureOutput.Detected -> mapping.value.actions[o.gesture].let { a ->
+                Log.i(TAG, "gesture ${o.gesture.id} -> $a")
+                a?.let { events.trySend(Event.Act(it)) }
+            }
         }
+        step.records.forEach { if (it.result == "rejected") Log.i(TAG, "rejected ${it.ruleIds} major=${it.samples.maxOf { s -> s.touchMajorDp }}") }
         if (logContacts()) step.records.forEach(log::contact)
         timer?.cancel()
         step.wakeAtMs?.let { at ->
@@ -172,7 +178,7 @@ class WritingSession(
             edgeBandDp = max(it.edgeBandDp, surface.edgeInsetDp),
             screenWidthDp = surface.widthDp,
             screenHeightDp = surface.heightDp,
-        )
+        ).coerced() // 시스템 제스처 인셋이 edgeBand 범위(64dp)를 넘으면 판정기 생성이 예외로 죽는다
     }
 
     private fun refreshPreview() {
@@ -205,6 +211,7 @@ class WritingSession(
     }
 
     private suspend fun act(action: Action) {
+        Log.i(TAG, "act $action buffer=${buffer.size}")
         when (action) {
             Action.SEND -> if (buffer.isEmpty()) {
                 if (emptySendEnter()) send(keyInput.enter(), HapticPattern.ENTER)
@@ -234,7 +241,9 @@ class WritingSession(
 
     private suspend fun sendInk() {
         val items = buffer.toList()
-        when (val outcome = recognizer.recognize(items, keyInput.preContext())) {
+        val outcome = recognizer.recognize(items, keyInput.preContext())
+        Log.i(TAG, "recognize ${items.size} items -> $outcome")
+        when (outcome) {
             is RecognitionOutcome.Text -> {
                 val plan = keyInput.text(outcome.text)
                 val result = send(plan, HapticPattern.SENT)
@@ -252,6 +261,7 @@ class WritingSession(
     /** 보내고 보낸 만큼 confirm. 미연결이면 아무것도 바꾸지 않고 재연결을 재촉한다(E1). */
     private suspend fun send(plan: KeyPlan, success: HapticPattern): SendResult {
         val result = hid.send(plan.units)
+        Log.i(TAG, "send ${plan.units.size} units -> $result")
         when (result) {
             is SendResult.Done -> {
                 keyInput.confirm(plan, result.unitsSent)
@@ -278,5 +288,6 @@ class WritingSession(
     companion object {
         /** 마지막 획 뒤 미리보기 인식까지 기다리는 시간. 실기기에서 조정. */
         const val PREVIEW_DEBOUNCE_MS = 400L
+        private const val TAG = "pb.session"
     }
 }

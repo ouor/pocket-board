@@ -76,8 +76,11 @@ data class GestureConfig(
     val multiDownWindowMs: Long = 120,
     val swipeMinDp: Float = 48f,
     val swipeAxisRatio: Float = 1.5f,
-    /** 0 = 팜 규칙 끔(touchMajor 를 믿을 수 없는 기기). */
-    val palmTouchMajorDp: Float = 18f,
+    /**
+     * 0 = 팜 규칙 끔(기본). 물리값을 주는 기기에서 손끝은 7~10mm ≈ 45~60dp 라 옛 기본 18dp 는 모든 접촉을 버렸다(LG V35 현장).
+     * 기기별 단위가 제각각이라 실측 후 개발자 옵션에서만 켠다.
+     */
+    val palmTouchMajorDp: Float = 0f,
     /** 화면 가장자리 무시 띠. :app 이 max(이 값, 시스템 제스처 인셋)으로 채운다. */
     val edgeBandDp: Float = 16f,
     val screenWidthDp: Float = 0f,

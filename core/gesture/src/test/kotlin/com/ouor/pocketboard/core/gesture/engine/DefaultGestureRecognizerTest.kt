@@ -114,7 +114,7 @@ class DefaultGestureRecognizerTest {
 
     @Test
     fun palm_rejected_withoutBreakingWriting() {
-        val r = DefaultGestureRecognizer(config)
+        val r = DefaultGestureRecognizer(config.copy(palmTouchMajorDp = 18f)) // 기본은 꺼짐
         val out = run(r, tap(200f, 400f, 1000, major = 30f))
         assertTrue(out.outputs.isEmpty())
         assertEquals(ContactRecord(tap(200f, 400f, 1000, major = 30f), "rejected", listOf("reject/palm-size")), out.records.single())

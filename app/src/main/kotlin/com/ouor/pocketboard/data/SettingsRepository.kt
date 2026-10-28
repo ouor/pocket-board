@@ -84,7 +84,9 @@ internal object SettingsCodec {
     private val MULTI_DOWN_WINDOW = longPreferencesKey("gesture_multi_down_window_ms")
     private val SWIPE_MIN = floatPreferencesKey("gesture_swipe_min_dp")
     private val SWIPE_AXIS_RATIO = floatPreferencesKey("gesture_swipe_axis_ratio")
-    private val PALM_MAJOR = floatPreferencesKey("gesture_palm_touch_major_dp")
+    // v2: encode 가 늘 써 둔 옛 기본값 18 이 모든 손가락 접촉을 버렸다. 버리고 새 기본값(0=끔)을 쓴다.
+    private val PALM_MAJOR = floatPreferencesKey("gesture_palm_touch_major_dp_v2")
+    private val PALM_MAJOR_V1 = floatPreferencesKey("gesture_palm_touch_major_dp")
     private val EDGE_BAND = floatPreferencesKey("gesture_edge_band_dp")
     private val DEV_OPTIONS_VISIBLE = booleanPreferencesKey("dev_options_visible")
     private val DEVLOG_ENABLED = booleanPreferencesKey("devlog_enabled")
@@ -168,6 +170,7 @@ internal object SettingsCodec {
         p[SWIPE_MIN] = s.gesture.swipeMinDp
         p[SWIPE_AXIS_RATIO] = s.gesture.swipeAxisRatio
         p[PALM_MAJOR] = s.gesture.palmTouchMajorDp
+        p.remove(PALM_MAJOR_V1)
         p[EDGE_BAND] = s.gesture.edgeBandDp
         p[DEV_OPTIONS_VISIBLE] = s.devOptionsVisible
         p[DEVLOG_ENABLED] = s.devlogEnabled

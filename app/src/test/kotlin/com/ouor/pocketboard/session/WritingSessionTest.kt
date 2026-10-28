@@ -17,6 +17,7 @@ import com.ouor.pocketboard.core.gesture.HapticPattern
 import com.ouor.pocketboard.core.gesture.Haptics
 import com.ouor.pocketboard.core.gesture.TouchAction
 import com.ouor.pocketboard.core.gesture.TouchSample
+import com.ouor.pocketboard.core.gesture.engine.DefaultGestureRecognizer
 import com.ouor.pocketboard.core.hid.HidEvent
 import com.ouor.pocketboard.core.hid.HidKeyboard
 import com.ouor.pocketboard.core.hid.HidState
@@ -25,6 +26,10 @@ import com.ouor.pocketboard.core.hid.HostDevice
 import com.ouor.pocketboard.core.hid.SendResult
 import com.ouor.pocketboard.core.ink.HandwritingRecognizer
 import com.ouor.pocketboard.core.ink.RecognitionOutcome
+import com.ouor.pocketboard.core.ink.SegmentationMode
+import com.ouor.pocketboard.core.ink.rules.InkConfig
+import com.ouor.pocketboard.core.ink.rules.defaultInkRules
+import com.ouor.pocketboard.core.ink.segment.InkPipeline
 import com.ouor.pocketboard.core.keymap.HostImeState
 import com.ouor.pocketboard.core.keymap.ImeMode
 import com.ouor.pocketboard.core.keymap.KeyInput
@@ -69,7 +74,7 @@ class WritingSessionTest {
         f.session.perform(Action.BACKSPACE)
         f.session.perform(Action.SEND)
         runCurrent()
-        assertEquals(listOf(listOf(1L)), f.ink.recognized) // 획 2만 빠짐
+        assertEquals(listOf(listOf(1L)), (f.ink as FakeInk).recognized) // 획 2만 빠짐
         assertEquals(listOf("text:안녕"), f.hid.sent) // 백스페이스는 호스트로 안 감
         assertEquals(listOf(HapticPattern.BACKSPACE, HapticPattern.SENT), f.played)
     }
@@ -82,7 +87,7 @@ class WritingSessionTest {
         f.session.perform(Action.SEND) // 버퍼가 비었으므로 빈 상태 엔터
         f.session.perform(Action.CHUNK_DELETE) // 호스트 덩어리 지우기
         runCurrent()
-        assertEquals(emptyList<List<Long>>(), f.ink.recognized)
+        assertEquals(emptyList<List<Long>>(), (f.ink as FakeInk).recognized)
         assertEquals(listOf("enter", "chunk"), f.hid.sent)
         assertEquals(listOf(HapticPattern.CHUNK_DELETE, HapticPattern.ENTER, HapticPattern.CHUNK_DELETE), f.played)
     }
@@ -97,7 +102,7 @@ class WritingSessionTest {
         f.hid.result = { SendResult.Done(it) }
         f.session.perform(Action.SEND)
         runCurrent()
-        assertEquals(listOf(listOf(1L), listOf(1L)), f.ink.recognized) // E1: 획 유지 후 다시 전송
+        assertEquals(listOf(listOf(1L), listOf(1L)), (f.ink as FakeInk).recognized) // E1: 획 유지 후 다시 전송
         assertEquals(listOf(HapticPattern.NOT_CONNECTED, HapticPattern.SENT), f.played)
         assertEquals(1, f.hid.warmUps)
     }
@@ -114,21 +119,69 @@ class WritingSessionTest {
         f.session.perform(Action.SEND)
         runCurrent()
         assertEquals(null, f.session.preview.value)
-        assertEquals(listOf(listOf(1L), listOf(1L)), f.ink.recognized) // 미리보기 1회 + 전송 1회
+        assertEquals(listOf(listOf(1L), listOf(1L)), (f.ink as FakeInk).recognized) // 미리보기 1회 + 전송 1회
 
         val off = Fixture(this)
         off.stroke(1)
         advanceTimeBy(WritingSession.PREVIEW_DEBOUNCE_MS * 2)
         assertEquals(null, off.session.preview.value)
-        assertEquals(emptyList<List<Long>>(), off.ink.recognized)
+        assertEquals(emptyList<List<Long>>(), (off.ink as FakeInk).recognized)
+    }
+
+    /**
+     * 현장 버그 재현: 실제 판정기 + 실제 InkPipeline(가짜 엔진)으로 400x800dp 표면, 제스처 인셋 24dp 에서
+     * 3획 단어 → 더블 탭. 손가락 touchMajor 는 문서 가정(8dp)과 실기기 물리값(약 7mm ≈ 45dp) 둘 다.
+     */
+    @Test
+    fun replay_wordThenDoubleTap_sendsRecognizedText() = runTest {
+        for (major in listOf(8f, 45f)) {
+            val engineStrokes = ArrayList<Int>()
+            val pipeline = InkPipeline({ _, strokes, _, _ -> engineStrokes += strokes.size; listOf("안녕") }, InkConfig(), defaultInkRules())
+            val ink = object : HandwritingRecognizer {
+                override suspend fun warmUp() = Unit
+                override suspend fun recognize(items: List<InkItem>, preContext: String) =
+                    pipeline.recognize(items, preContext, SegmentationMode.RULES)
+                override fun close() = Unit
+            }
+            val f = Fixture(this, ink = ink, newRecognizer = ::DefaultGestureRecognizer)
+            f.session.setSurface(400f, 800f, 24f)
+            runCurrent()
+            var t = testScheduler.currentTime + 1000
+            fun line(x0: Float, y0: Float, x1: Float, y1: Float) {
+                for (k in 0..12) {
+                    val a = when (k) { 0 -> TouchAction.DOWN; 12 -> TouchAction.UP; else -> TouchAction.MOVE }
+                    f.session.onTouch(listOf(TouchSample(0, a, x0 + (x1 - x0) * k / 12, y0 + (y1 - y0) * k / 12, t, major)))
+                    t += 12
+                }
+                t += 250
+            }
+            fun tap(x: Float, y: Float) {
+                f.session.onTouch(listOf(TouchSample(0, TouchAction.DOWN, x, y, t, major)))
+                f.session.onTouch(listOf(TouchSample(0, TouchAction.UP, x + 1.5f, y + 1f, t + 80, major)))
+                t += 80 + 120
+            }
+            line(140f, 330f, 140f, 400f) // ㄴ 세로
+            line(140f, 400f, 200f, 400f) // ㄴ 가로
+            line(230f, 320f, 230f, 410f) // ㅣ
+            tap(220f, 520f)
+            tap(223f, 522f)
+            runCurrent()
+            assertEquals("major=$major", listOf(3, 3), engineStrokes) // ko·en 각각 3획(점 획은 retract)
+            assertEquals("major=$major", listOf("text:안녕"), f.hid.sent)
+            assertEquals("major=$major", listOf(HapticPattern.SENT), f.played)
+        }
     }
 
     // --- fakes ---
 
-    private class Fixture(scope: TestScope, preview: Boolean = false) {
+    private class Fixture(
+        scope: TestScope,
+        preview: Boolean = false,
+        val ink: HandwritingRecognizer = FakeInk(),
+        newRecognizer: ((GestureConfig) -> GestureRecognizer)? = null,
+    ) {
         val keys = FakeKeys()
         val hid = FakeHid(keys)
-        val ink = FakeInk()
         val gestures = FakeGestures()
         val played = ArrayList<HapticPattern>()
         val session = WritingSession(
@@ -143,7 +196,7 @@ class WritingSessionTest {
             emptySendEnter = { true },
             logContacts = { false },
             previewEnabled = MutableStateFlow(preview),
-            newRecognizer = { gestures },
+            newRecognizer = newRecognizer ?: { gestures },
             scope = scope.backgroundScope,
             now = { scope.testScheduler.currentTime },
         )

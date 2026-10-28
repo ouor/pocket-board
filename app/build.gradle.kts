@@ -36,6 +36,7 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true   // Robolectric
+        unitTests.isReturnDefaultValues = true       // 순수 JVM 테스트에서 android.util.Log 호출 허용
         unitTests.all {
             // Robolectric 이 JDK 21 에서 FileDescriptor 내부에 접근하려면 필요
             it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
