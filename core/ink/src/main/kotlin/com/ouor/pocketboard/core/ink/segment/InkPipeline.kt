@@ -97,15 +97,17 @@ class InkPipeline(
             val checked = if (mode == SegmentationMode.HYPOTHESIS) HYPOTHESIS_BOUNDARIES else RULES_BOUNDARIES
             clusters = mergeHypotheses(segmented, pre, ruleIds, checked, w)
             chosen = read(relayout(clusters, config.relayoutGapRatio, config.minCharSize), pre, w)
-            var final = w?.lastRead
-            split(clusters, chosen.value, pre, trace, w)?.let { (parts, ruleId) ->
-                val again = read(relayout(parts, config.relayoutGapRatio, config.minCharSize), pre, w)
-                if (again.value.isNotEmpty()) { clusters = parts; chosen = again; ruleIds += ruleId; final = w?.lastRead }
-            }
-            w?.lastRead = final
         }
-        w?.finish(clusters, chosen)
-        return finish(clusters, chosen, ruleIds)
+        chosen.ruleId?.let(ruleIds::add)
+        // Text 체인은 글자를 고른 바로 뒤(Split 전): Split 의 글자↔묶음 1:1 대응이 인식기가 붙인 앞 공백에 어긋나지 않게
+        val fixed = rules.text.transform(TextInput(chosen.value, clusters))
+        ruleIds += fixed.ruleIds
+        var text = fixed.value.text
+        if (mode != SegmentationMode.RAW) split(clusters, text, pre, trace, w)?.let { (parts, ruleId, splitText) ->
+            clusters = parts; text = splitText; ruleIds += ruleId
+        }
+        w?.finish(clusters, chosen, text)
+        return text
     }
 
     /** ko·en 병렬 인식 → Candidate 체인. */
@@ -120,22 +122,16 @@ class InkPipeline(
         return rules.candidate.firstMatch(CandidateInput(ko, en), ::defaultCandidate)
     }
 
-    private fun finish(clusters: List<List<InkStroke>>, chosen: Verdict<String>, ruleIds: MutableSet<String>): String {
-        chosen.ruleId?.let(ruleIds::add)
-        if (chosen.value.isEmpty()) return ""
-        val fixed = rules.text.transform(TextInput(chosen.value, clusters))
-        ruleIds += fixed.ruleIds
-        return fixed.value.text
-    }
-
     /**
      * Split 단계: 결과 글자와 묶음이 1:1 일 때 묶음마다 Split 체인을 묻고, 목표 글자가 나오면 앞에서부터 그 글자로
      * 읽히는 가장 짧은 조각으로 자른다(직전 조각 길이부터 시도). 묶음 전체가 목표 글자 조각들로 나뉠 때만 채택.
+     * 조각은 하나씩 목표 글자로 확인했으므로 다시 인식하지 않는다: 나뉜 묶음은 목표×조각 수, 나머지는 원래 글자.
+     * 현장: 확인된 ㅋ 조각 4개를 재배치해 다시 읽으니 ML Kit 이 "ㅋㅋㅋ"로 하나 빠뜨렸다.
      * 보통 입력은 체인이 null 이라 추가 호출이 없다. 호출은 단어당 [InkConfig.maxSplitCalls] 까지.
      */
     private suspend fun split(
         clusters: List<List<InkStroke>>, text: String, pre: String, trace: StringBuilder, w: WordRecorder?,
-    ): Pair<List<List<InkStroke>>, String>? {
+    ): Triple<List<List<InkStroke>>, String, String>? {
         if (text.length != clusters.size) return null
         var calls = 0
 
@@ -169,6 +165,7 @@ class InkPipeline(
         }
 
         val out = ArrayList<List<InkStroke>>()
+        val outText = StringBuilder()
         var ruleId: String? = null
         for ((i, c) in clusters.withIndex()) {
             val v = rules.split.firstMatch(SplitInput(c, text[i].toString())) { "" }
@@ -176,10 +173,10 @@ class InkPipeline(
             val parts = if (v.value.isEmpty()) null else cut(c, v.value, tries)
             if (w != null && tries != null) w.splits += InkSplitAttempt(i, v.value, tries, parts?.map(w::ids))
             if (v.value.isNotEmpty()) trace.append(" | split#").append(i).append(' ').append(v.value).append(" x").append(parts?.size ?: 0)
-            if (parts != null) { out += parts; ruleId = v.ruleId } else out += c
+            if (parts != null) { out += parts; ruleId = v.ruleId; outText.append(v.value.repeat(parts.size)) } else { out += c; outText.append(text[i]) }
         }
         if (calls > 0) trace.append(" calls=").append(calls)
-        return ruleId?.let { out to it }
+        return ruleId?.let { Triple(out, it, outText.toString()) }
     }
 
     /** 획마다 "번호 N(새 글자, 규칙)/S(같은 글자) in=상자 안 비율 p=쉼ms g=간격dp". 측정은 그 획을 판정할 때의 묶음 기준. */

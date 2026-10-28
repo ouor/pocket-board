@@ -38,6 +38,16 @@ class InkPipelineTest {
     }
 
     @Test
+    fun recognizerLeadingSpace_trimmed_userSpaceKept() = runTest {
+        // 인식기가 앞 문맥 때문에 붙인 앞 공백만 지운다. 사용자가 넣은 Space 는 그대로 한 칸
+        answer = { c -> if (c.lang == InkLanguage.KO) listOf(if (c.pre.endsWith(" ")) " 에" else " 안녕") else emptyList() }
+        val out = pipeline.recognize(listOf(stroke(first), InkItem.Space, stroke(second)), "abc", SegmentationMode.RULES)
+
+        assertEquals("안녕 에", (out as RecognitionOutcome.Text).text)
+        assertTrue("text/trim-leading" in out.ruleIds)
+    }
+
+    @Test
     fun allWordsFail_isEmpty() = runTest {
         assertEquals(RecognitionOutcome.Empty, pipeline.recognize(listOf(stroke(first)), "", SegmentationMode.RULES))
     }

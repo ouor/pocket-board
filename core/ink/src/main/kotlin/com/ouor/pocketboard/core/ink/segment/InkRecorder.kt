@@ -57,7 +57,7 @@ internal class WordRecorder(private val index: StrokeIndex, private val strokes:
         lastRead = Triple(ink, ko, en)
     }
 
-    fun finish(clusters: List<List<InkStroke>>, chosen: Verdict<String>) {
+    fun finish(clusters: List<List<InkStroke>>, chosen: Verdict<String>, text: String) {
         val (ink, ko, en) = lastRead ?: Triple(emptyList(), emptyList(), emptyList())
         // 재배치는 획 순서를 안 바꾸므로 ink[i] 는 strokes[i] 를 민 것
         out += InkWordReport(
@@ -69,7 +69,7 @@ internal class WordRecorder(private val index: StrokeIndex, private val strokes:
             finalDx = ink.map(index::dx),
             ko = ko,
             en = en,
-            chosen = chosen.value,
+            chosen = text,
             candidateRuleId = chosen.ruleId,
             calls = calls,
         )

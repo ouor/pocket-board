@@ -22,13 +22,23 @@ class SettingsCodecTest {
     fun outOfRangeInkValuesAreClampedInsteadOfThrowing() {
         val p = mutablePreferencesOf(
             longPreferencesKey("ink_restart_pause_ms") to 99_999L,
-            longPreferencesKey("ink_new_char_pause_ms") to 99_999L,
+            longPreferencesKey("ink_new_char_pause_ms_v2") to 99_999L,
             floatPreferencesKey("ink_restart_overlap_ratio") to -1f,
         )
         val c = SettingsCodec.decode(p).ink.config
         assertEquals(2000L, c.restartPauseMs)
         assertEquals(3000L, c.newCharPauseMs)
         assertEquals(0f, c.restartOverlapRatio)
+    }
+
+    @Test
+    fun oldStoredNewCharPauseDefaultIsDropped() {
+        val p = mutablePreferencesOf(longPreferencesKey("ink_new_char_pause_ms") to 600L)
+        val s = SettingsCodec.decode(p)
+        assertEquals(500L, s.ink.config.newCharPauseMs)
+        SettingsCodec.encode(s.copy(ink = s.ink.copy(config = s.ink.config.copy(newCharPauseMs = 700))), p)
+        assertEquals(null, p[longPreferencesKey("ink_new_char_pause_ms")])
+        assertEquals(700L, SettingsCodec.decode(p).ink.config.newCharPauseMs) // 새로 고른 값은 유지
     }
 
     @Test

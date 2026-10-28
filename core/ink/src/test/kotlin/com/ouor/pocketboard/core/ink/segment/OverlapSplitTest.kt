@@ -100,16 +100,25 @@ class OverlapSplitTest {
         val out = run(List(2) { KIEUK }, List(2) { 0f })
         assertEquals("ㅋㅋ", out.text)
         assertTrue("split/stroke-excess" in out.ruleIds)
-        assertEquals(2 + 3 + 2, calls.size)   // 첫 인식 + 자리 찾기(ㄱ, ㅋ, ㅋ) + 재인식
+        assertEquals(2 + 3, calls.size)   // 첫 인식 + 자리 찾기(ㄱ, ㅋ, ㅋ). 조각은 하나씩 확인했으므로 재인식 없음
     }
 
     @Test
     fun overlapped_kkkk_fast() = runTest {
         val out = run(List(4) { KIEUK }, List(4) { 0f })
         assertEquals("ㅋㅋㅋㅋ", out.text)
-        assertEquals(2 + 5 + 2, calls.size)
+        assertEquals(2 + 5, calls.size)
         assertTrue(logs.single(), logs.single().startsWith("rules / n=8 | 0 N first | 1 S in=1.00 p="))
         assertTrue(logs.single(), logs.single().endsWith("| split#0 ㅋ x4 calls=5"))
+    }
+
+    @Test
+    fun partialSplit_otherClustersKeepFirstReading() = runTest {
+        // 가 | ㅋ×4 겹침: 둘째 묶음만 나뉜다. 가 는 첫 인식 글자 그대로
+        val out = run(listOf(GA) + List(4) { KIEUK }, listOf(0f) + List(4) { 130f })
+        assertEquals("가ㅋㅋㅋㅋ", out.text)
+        assertTrue("split/stroke-excess" in out.ruleIds)
+        assertEquals(1 + 2 + 5, calls.size)   // right-of 합침 확인 + 첫 인식 + 자리 찾기
     }
 
     @Test

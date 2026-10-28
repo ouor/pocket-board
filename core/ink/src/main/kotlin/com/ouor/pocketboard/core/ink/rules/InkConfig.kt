@@ -18,8 +18,8 @@ data class InkConfig(
     val restartMarginRatio: Float = 0.1f,
     /** S3: 직전 획 끝 → 새 획 시작 쉼이 이 값 이상이면 같은 자리 재시작(새 글자). */
     val restartPauseMs: Long = 350,
-    /** S4: 직전 획 끝 → 새 획 시작 쉼이 이 값 이상이면 자리와 상관없이 새 글자. 현장: 글자 안 ≤284ms, 글자 사이 712~1964ms. */
-    val newCharPauseMs: Long = 600,
+    /** S4: 직전 획 끝 → 새 획 시작 쉼이 이 값 이상이면 자리와 상관없이 새 글자. 현장: 글자 안 ≤347ms, 글자 사이 575ms~. */
+    val newCharPauseMs: Long = 500,
     /** 재배치 시 묶음 사이 간격 = 앞 묶음 높이 × 이 값. */
     val relayoutGapRatio: Float = 0.2f,
     /** 합침 확인(B: right-of 경계, C: + same-spot-restart 경계)에서 단어 하나당 추가 인식 호출 상한(지연 예산). */

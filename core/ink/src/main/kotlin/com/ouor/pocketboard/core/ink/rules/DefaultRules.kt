@@ -10,7 +10,7 @@ import com.ouor.pocketboard.core.common.rule.Rule
  * | Segment | segment/first | 단어 첫 획 | NEW_CHAR | - |
  * | Segment | segment/right-of | 새 획 왼쪽 > 묶음 오른쪽 + 글자 크기×0.3 | NEW_CHAR | 이어 쓰기(ink.md §4.3 S2) |
  * | Segment | segment/same-spot-restart | 새 획 점 60% 이상이 묶음 상자 안 + 쉼 ≥ 350ms | NEW_CHAR | 겹쳐 쓰기(S3) |
- * | Segment | segment/long-pause | 쉼 ≥ 600ms(자리 무관) | NEW_CHAR | 현장 "이게": ㅣ 만 남은 묶음 밖에서 1.1~2.0s 뒤 시작 |
+ * | Segment | segment/long-pause | 쉼 ≥ 500ms(자리 무관) | NEW_CHAR | 현장 "이게": ㅣ 만 남은 묶음 밖에서 1.1~2.0s 뒤 시작 |
  * | Segment | (기본) | 나머지 | SAME_CHAR | |
  * | Candidate | candidate/empty | ko·en 1순위 모두 비어 있음 | "" (Empty) | D9 |
  * | Candidate | candidate/ko-hangul | ko 1순위에 완성 음절 | ko 1순위 | C1 |
@@ -21,7 +21,8 @@ import com.ouor.pocketboard.core.common.rule.Rule
  * | Merge | (기본) | 나머지 | 끊은 그대로 | |
  * | Split | split/stroke-excess | 결과 글자 수 = 묶음 수일 때, 묶음 획 수 ≥ 읽힌 한글 글자 표준 획 수 × 2 | 그 글자로 다시 나눔 | 빠른 겹쳐 쓰기 "ㅋㅋㅋㅋ"→"ㅋ" |
  * | Split | (기본) | 나머지 | 그대로 | |
- * | Text | (없음, 1차) | | | F20 혼동은 실기기 사례 후 |
+ * | Text | text/trim-leading | 단어 글자 앞 공백(인식기가 앞 문맥 때문에 붙임) | 앞 공백 지움 | 현장 " 테스트" |
+ * | Text | (그 밖) | | | F20 혼동은 실기기 사례 후 |
  */
 class InkRules(
     val segment: List<Rule<SegmentInput, Boundary>>,
@@ -46,5 +47,5 @@ fun defaultInkRules(config: InkConfig = InkConfig()) = InkRules(
     ),
     merge = listOf(SingleSyllableMergeRule),
     split = listOf(StrokeExcessSplitRule(config)),
-    text = emptyList(),
+    text = listOf(TrimLeadingRule),   // Candidate 직후·Split 전에 돈다(InkPipeline)
 )

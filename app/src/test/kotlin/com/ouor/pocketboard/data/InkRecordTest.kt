@@ -43,18 +43,19 @@ class InkRecordTest {
     }
 
     @Test
-    fun svg_isWellFormed_twoPathsPerStroke_textEscaped() = runTest {
+    fun svg_isWellFormed_threePathsPerStroke_textEscaped_spacesVisible() = runTest {
         val (_, r) = record()
         val result = "Done(<sent> & \"ok\")"
         val svg = InkSvg.render(DevLogEntry.Ink.of(1L, items, r), result)
 
         val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(svg.byteInputStream()) // 깨진 XML 이면 예외
-        assertEquals(4 * 2, doc.getElementsByTagName("path").length) // 원래 + 인식기 입력
+        assertEquals(4 * 3, doc.getElementsByTagName("path").length) // 인식기 입력 띠 + 묶음 칸 + 원래
         val texts = (0 until doc.getElementsByTagName("text").length).map { doc.getElementsByTagName("text").item(it).textContent }
         assertTrue(texts.toString(), texts.any { it == "send: $result" })
         assertTrue(texts.toString(), texts.any { it.contains("o<l>") })
-        assertTrue(texts.toString(), texts.any { it == "2 long-pause" }) // 새 글자 획에 규칙 id
-        assertTrue(texts.toString(), "merged" in texts) // ㅇ|ㅣ 합침
+        assertTrue(texts.toString(), "#1 long-pause" in texts) // 묶음 칸 아래 시작 규칙
+        assertTrue(texts.toString(), "merged right-of@1" in texts) // ㅇ|ㅣ 합침
+        assertTrue(texts.toString(), "text: \"이게␣o<l>\"" in texts) // 공백은 ␣
     }
 
     @Test

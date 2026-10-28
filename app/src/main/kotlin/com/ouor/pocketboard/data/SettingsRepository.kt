@@ -71,7 +71,9 @@ internal object SettingsCodec {
     private val LATIN_V1 = stringPreferencesKey("keymap_latin")
     private val SEGMENTATION = stringPreferencesKey("ink_segmentation")
     private val INK_RESTART_PAUSE = longPreferencesKey("ink_restart_pause_ms")
-    private val INK_NEW_CHAR_PAUSE = longPreferencesKey("ink_new_char_pause_ms")
+    // v2: encode 가 늘 써 둔 옛 기본값 600 이 현장 575ms 글자 경계를 놓쳤다. 버리고 새 기본값(500)을 쓴다.
+    private val INK_NEW_CHAR_PAUSE = longPreferencesKey("ink_new_char_pause_ms_v2")
+    private val INK_NEW_CHAR_PAUSE_V1 = longPreferencesKey("ink_new_char_pause_ms")
     private val INK_RESTART_OVERLAP = floatPreferencesKey("ink_restart_overlap_ratio")
     private val INK_RESTART_MARGIN = floatPreferencesKey("ink_restart_margin_ratio")
     private val INK_RIGHT_OF_GAP = floatPreferencesKey("ink_right_of_gap_ratio")
@@ -163,6 +165,7 @@ internal object SettingsCodec {
         p[SEGMENTATION] = s.ink.segmentation.id
         p[INK_RESTART_PAUSE] = s.ink.config.restartPauseMs
         p[INK_NEW_CHAR_PAUSE] = s.ink.config.newCharPauseMs
+        p.remove(INK_NEW_CHAR_PAUSE_V1)
         p[INK_RESTART_OVERLAP] = s.ink.config.restartOverlapRatio
         p[INK_RESTART_MARGIN] = s.ink.config.restartMarginRatio
         p[INK_RIGHT_OF_GAP] = s.ink.config.rightOfGapRatio
