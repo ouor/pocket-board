@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- SVG: translate(54 55) scale(0.74) translate(-57 -50) -->
+    <group
+        android:pivotX="57"
+        android:pivotY="50"
+        android:scaleX="0.74"
+        android:scaleY="0.74"
+        android:translateX="-3"
+        android:translateY="5">
+        <path
+            android:pathData="M22,76 C40,74 59,58 62,40 C64,24 42,23 41,41 C40,60 54,73 71,67 C75,65.5 77,62 78,59"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="10"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M73.5,40a5.5,5.5 0,1 0,11 0a5.5,5.5 0,1 0,-11 0zM86.5,40a5.5,5.5 0,1 0,11 0a5.5,5.5 0,1 0,-11 0z" />
+    </group>
+</vector>

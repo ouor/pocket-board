@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/design/icon.png" width="112" alt="pocketboard 아이콘: 남색 바탕에 고리를 그리며 올라가는 손글씨 한 획과 점 두 개">
+
 # pocketboard (포켓보드)
 
 **폰에 손글씨를 쓰면 PC에 글자가 들어가는 블루투스 키보드 앱**
