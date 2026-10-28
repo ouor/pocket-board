@@ -18,12 +18,15 @@ import com.ouor.pocketboard.core.common.rule.Rule
  * | Candidate | (기본) | 나머지 | en(ASCII) > ko > en | C4 |
  * | Merge(단계 C) | merge/single-syllable | 합쳐 인식한 ko 1순위가 음절 1개 | 합침 | |
  * | Merge | (기본) | 나머지 | 끊은 그대로 | |
+ * | Split | split/stroke-excess | 결과 글자 수 = 묶음 수일 때, 묶음 획 수 ≥ 읽힌 한글 글자 표준 획 수 × 2 | 그 글자로 다시 나눔 | 빠른 겹쳐 쓰기 "ㅋㅋㅋㅋ"→"ㅋ" |
+ * | Split | (기본) | 나머지 | 그대로 | |
  * | Text | (없음, 1차) | | | F20 혼동은 실기기 사례 후 |
  */
 class InkRules(
     val segment: List<Rule<SegmentInput, Boundary>>,
     val candidate: List<Rule<CandidateInput, String>>,
     val merge: List<Rule<MergeInput, Boolean>>,
+    val split: List<Rule<SplitInput, String>>,
     val text: List<Rule<TextInput, TextInput>>,
 )
 
@@ -40,5 +43,6 @@ fun defaultInkRules(config: InkConfig = InkConfig()) = InkRules(
         KoJamoRule,
     ),
     merge = listOf(SingleSyllableMergeRule),
+    split = listOf(StrokeExcessSplitRule(config)),
     text = emptyList(),
 )

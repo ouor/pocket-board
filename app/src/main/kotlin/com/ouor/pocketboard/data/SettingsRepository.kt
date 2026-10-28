@@ -77,6 +77,8 @@ internal object SettingsCodec {
     private val INK_RELAYOUT_GAP = floatPreferencesKey("ink_relayout_gap_ratio")
     private val INK_MIN_CHAR_SIZE = floatPreferencesKey("ink_min_char_size_dp")
     private val INK_MAX_HYPOTHESIS = intPreferencesKey("ink_max_hypothesis_calls")
+    private val INK_SPLIT_STROKE_RATIO = floatPreferencesKey("ink_split_stroke_ratio")
+    private val INK_MAX_SPLIT = intPreferencesKey("ink_max_split_calls")
     private val TAP_SLOP = floatPreferencesKey("gesture_tap_slop_dp")
     private val TAP_MAX = longPreferencesKey("gesture_tap_max_ms")
     private val MULTI_TAP_GAP = longPreferencesKey("gesture_multi_tap_gap_ms")
@@ -123,6 +125,8 @@ internal object SettingsCodec {
                     restartPauseMs = (p[INK_RESTART_PAUSE] ?: i.restartPauseMs).coerceIn(InkRanges.restartPauseMs),
                     relayoutGapRatio = (p[INK_RELAYOUT_GAP] ?: i.relayoutGapRatio).coerceIn(InkRanges.ratio),
                     maxHypothesisCalls = (p[INK_MAX_HYPOTHESIS] ?: i.maxHypothesisCalls).coerceIn(InkRanges.maxHypothesisCalls),
+                    splitStrokeRatio = (p[INK_SPLIT_STROKE_RATIO] ?: i.splitStrokeRatio).coerceIn(InkRanges.splitStrokeRatio),
+                    maxSplitCalls = (p[INK_MAX_SPLIT] ?: i.maxSplitCalls).coerceIn(InkRanges.maxSplitCalls),
                 ),
             ),
             gesture = GestureConfig(
@@ -162,6 +166,8 @@ internal object SettingsCodec {
         p[INK_RELAYOUT_GAP] = s.ink.config.relayoutGapRatio
         p[INK_MIN_CHAR_SIZE] = s.ink.config.minCharSize
         p[INK_MAX_HYPOTHESIS] = s.ink.config.maxHypothesisCalls
+        p[INK_SPLIT_STROKE_RATIO] = s.ink.config.splitStrokeRatio
+        p[INK_MAX_SPLIT] = s.ink.config.maxSplitCalls
         p[TAP_SLOP] = s.gesture.tapSlopDp
         p[TAP_MAX] = s.gesture.tapMaxMs
         p[MULTI_TAP_GAP] = s.gesture.multiTapGapMs
@@ -184,4 +190,6 @@ object InkRanges {
     val ratio = 0f..1f
     val restartPauseMs = 0L..2000L
     val maxHypothesisCalls = 0..10
+    val splitStrokeRatio = 1f..5f
+    val maxSplitCalls = 0..12
 }

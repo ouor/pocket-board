@@ -53,7 +53,7 @@ internal class MlKitHandwritingRecognizer(
         if (!ready) return RecognitionOutcome.ModelNotReady
         val s = settings.value   // 전송마다 현재 설정(A36). 규칙 생성 비용은 무시할 만하다
         return withContext(Dispatchers.Default) {
-            InkPipeline(this@MlKitHandwritingRecognizer, s.config, defaultInkRules(s.config)).recognize(items, preContext, s.segmentation)
+            InkPipeline(this@MlKitHandwritingRecognizer, s.config, defaultInkRules(s.config)) { Log.i(SEGMENT_TAG, it) }.recognize(items, preContext, s.segmentation)
         }
     }
 
@@ -83,5 +83,8 @@ internal class MlKitHandwritingRecognizer(
 
     override fun close() = clients.values.forEach { it.close() }
 
-    private companion object { const val TAG = "pb.ink.recognizer" }
+    private companion object {
+        const val TAG = "pb.ink.recognizer"
+        const val SEGMENT_TAG = "pb.ink.segment"
+    }
 }

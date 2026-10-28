@@ -23,12 +23,7 @@ class RightOfRule(private val config: InkConfig) : Rule<SegmentInput, Boundary> 
 class SameSpotRestartRule(private val config: InkConfig) : Rule<SegmentInput, Boundary> {
     override val id = ID
     override fun apply(input: SegmentInput): Boundary? {
-        val box = input.current.bounds()
-        val margin = config.charSize(box.height) * config.restartMarginRatio
-        val points = input.stroke.points
-        val inside = points.count { box.contains(it, margin) }.toFloat() / points.size
-        val pause = points.first().t - input.current.last().points.last().t
-        return if (inside >= config.restartOverlapRatio && pause >= config.restartPauseMs) Boundary.NEW_CHAR else null
+        return if (input.insideRatio(config) >= config.restartOverlapRatio && input.pauseMs >= config.restartPauseMs) Boundary.NEW_CHAR else null
     }
 
     companion object {
@@ -36,3 +31,18 @@ class SameSpotRestartRule(private val config: InkConfig) : Rule<SegmentInput, Bo
         const val ID = "segment/same-spot-restart"
     }
 }
+
+// 규칙과 분할 로그(pb.ink.segment)가 같이 쓰는 측정값. [SegmentInput.current]가 비어 있으면 부르지 않는다.
+
+/** 새 획 점 중 묶음 상자(여유 = 글자 크기 × restartMarginRatio) 안에 든 비율. */
+fun SegmentInput.insideRatio(config: InkConfig): Float {
+    val box = current.bounds()
+    val margin = config.charSize(box.height) * config.restartMarginRatio
+    return stroke.points.count { box.contains(it, margin) }.toFloat() / stroke.points.size
+}
+
+/** 직전 획 끝 → 새 획 시작(ms). */
+val SegmentInput.pauseMs get() = stroke.points.first().t - current.last().points.last().t
+
+/** 새 획 왼쪽 − 묶음 오른쪽(dp). 음수면 x 로 겹친다. */
+val SegmentInput.gap get() = stroke.bounds().left - current.bounds().right

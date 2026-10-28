@@ -125,6 +125,8 @@ fun DevOptionsScreen(
             Num("재배치 간격", i.relayoutGapRatio.toDouble(), 0.05, InkRanges.ratio.f(), "×", 2) { v -> ink { it.copy(relayoutGapRatio = v.toFloat()) } }
             Num("글자 크기 하한", i.minCharSize.toDouble(), 2.0, InkRanges.minCharSize.f(), "dp", 0) { v -> ink { it.copy(minCharSize = v.toFloat()) } }
             Num("C단계 추가 인식 상한", i.maxHypothesisCalls.toDouble(), 1.0, InkRanges.maxHypothesisCalls.let { it.first.toDouble()..it.last.toDouble() }, "회", 0) { v -> ink { it.copy(maxHypothesisCalls = v.toInt()) } }
+            Num("겹친 반복 글자 획 수 배수", i.splitStrokeRatio.toDouble(), 0.25, InkRanges.splitStrokeRatio.f(), "×", 2) { v -> ink { it.copy(splitStrokeRatio = v.toFloat()) } }
+            Num("겹친 반복 나누기 인식 상한", i.maxSplitCalls.toDouble(), 1.0, InkRanges.maxSplitCalls.let { it.first.toDouble()..it.last.toDouble() }, "회", 0) { v -> ink { it.copy(maxSplitCalls = v.toInt()) } }
         }
 
         SettingGroup("제스처 판정(A36)") {

@@ -20,6 +20,10 @@ data class InkConfig(
     val relayoutGapRatio: Float = 0.2f,
     /** 단계 C 에서 단어 하나당 추가 인식 호출 상한(지연 예산). */
     val maxHypothesisCalls: Int = 4,
+    /** Split: 묶음 획 수 ≥ 읽힌 한글 글자의 표준 획 수 × 이 값이면 같은 글자를 같은 자리에 겹쳐 쓴 것으로 본다. */
+    val splitStrokeRatio: Float = 2f,
+    /** Split: 단어 하나당 나눌 자리를 찾는 추가 인식 호출 상한(지연 예산). */
+    val maxSplitCalls: Int = 8,
 ) {
     // 범위는 docs/core/ink.md §3 표와 같다. 설정 저장소(:app)가 범위 밖 값을 넘기면 프로그래머 오류.
     init {
@@ -30,6 +34,8 @@ data class InkConfig(
         require(restartPauseMs in 0L..2000L) { "restartPauseMs $restartPauseMs" }
         require(relayoutGapRatio in 0f..1f) { "relayoutGapRatio $relayoutGapRatio" }
         require(maxHypothesisCalls in 0..10) { "maxHypothesisCalls $maxHypothesisCalls" }
+        require(splitStrokeRatio in 1f..5f) { "splitStrokeRatio $splitStrokeRatio" }
+        require(maxSplitCalls in 0..12) { "maxSplitCalls $maxSplitCalls" }
     }
 
     fun charSize(height: Float) = maxOf(height, minCharSize)
@@ -45,6 +51,9 @@ data class CandidateInput(val ko: List<String>, val en: List<String>)
 
 /** Merge 단계(단계 C) 입력: 끊긴 두 묶음을 합쳐 ko 로 인식한 후보. */
 data class MergeInput(val ko: List<String>)
+
+/** Split 단계 입력: 인식 결과와 1:1 로 대응한 글자 묶음 하나와 그 묶음이 읽힌 글자. */
+data class SplitInput(val strokes: List<InkStroke>, val char: String)
 
 /** Text 단계 입력. [clusters]는 이 단어의 글자 묶음(원래 좌표). 출력 글자 수와 같을 때만 1:1 대응한다고 볼 수 있다. */
 data class TextInput(val text: String, val clusters: List<List<InkStroke>>)
