@@ -46,7 +46,7 @@ class FieldEvalTest {
     )
 
     @Serializable
-    private class FieldInk(val strokes: List<List<List<Float>>>, val spaces: List<Int>, val report: InkReport) {
+    internal class FieldInk(val strokes: List<List<List<Float>>>, val spaces: List<Int>, val report: InkReport) {
         fun items(): List<InkItem> = buildList {
             strokes.forEachIndexed { i, s ->
                 repeat(spaces.count { it == i }) { add(InkItem.Space) }

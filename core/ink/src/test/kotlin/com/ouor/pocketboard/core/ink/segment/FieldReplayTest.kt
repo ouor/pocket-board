@@ -44,7 +44,7 @@ class FieldReplayTest {
     @Test
     fun allCases_currentDefaults_reproduceDeviceRecording() = runTest {
         val cases = javaClass.getResource("/field/cases.tsv")!!.readText().lines().filter { it.isNotBlank() && !it.startsWith("#") }
-        assertEquals(10, cases.size)
+        assertEquals(15, cases.size)
         for (line in cases) {
             val file = line.substringBefore('\t')
             val items = load(file).items()
