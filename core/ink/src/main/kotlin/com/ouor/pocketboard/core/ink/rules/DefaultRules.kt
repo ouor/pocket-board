@@ -20,7 +20,7 @@ import com.ouor.pocketboard.core.common.rule.Rule
  * | Candidate | (기본) | 나머지 | en(ASCII) > ko > en | C4 |
  * | Merge(B·C) | merge/single-syllable | 끊긴 두 묶음(B: right-of, C: + same-spot-restart)을 합쳐 인식한 ko 1순위가 음절 1개 | 합침 | 현장 "이": ㅇ|ㅣ |
  * | Merge | (기본) | 나머지 | 끊은 그대로 | |
- * | Split(읽기 전) | split/stacked-syllables | 글자 하나 넓이(가로 ≤ 세로×1.4) 묶음이 10획 이상 | 직전 획 끝에서 왼쪽 위로 가장 많이 되돌아간 자리부터 최대 3곳을 잘라 두 조각을 나란히 ko 로 읽어, 1순위가 완성 음절 2~3개면 그 자리에서 나눔(조각도 다시 확인) | 현장 3차 "상담"→"학", "마트에"→"토" |
+ * | Split(읽기 전) | split/stacked-syllables | 글자 하나 넓이(가로 ≤ 세로×1.4) 묶음이 6획 이상 | 직전 획 끝에서 왼쪽 위로 가장 많이 되돌아간 자리부터 최대 3곳을 잘라 두 조각을 나란히 ko 로 읽어, 1순위가 완성 음절 2~3개면 그 자리에서 나눔(조각도 다시 확인) | 현장 3차 "상담"→"학", "마트에"→"토" |
  * | Split(읽기 전) | (기본) | 나머지 | 그대로 | |
  * | Split | split/stroke-excess | 결과 글자 수 = 묶음 수일 때, 묶음 획 수 ≥ 읽힌 한글 글자 표준 획 수 × 2 | 그 글자로 다시 나눔 | 빠른 겹쳐 쓰기 "ㅋㅋㅋㅋ"→"ㅋ" |
  * | Split | (기본) | 나머지 | 그대로 | |

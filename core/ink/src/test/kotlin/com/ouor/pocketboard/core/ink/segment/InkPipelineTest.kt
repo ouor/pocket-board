@@ -63,7 +63,8 @@ class InkPipelineTest {
 
         assertEquals("가나", (out as RecognitionOutcome.Text).text)
         assertTrue(out.ruleIds.toString(), "split/stacked-syllables" in out.ruleIds)
-        assertEquals(3, calls.size)                                   // 확인 1(두 조각 나란히, 10획) + 최종 ko·en
+        // 확인 1(두 조각 나란히, 10획) + 8획 조각 다시 확인 3(음절 1개로 읽혀 그대로) + 최종 ko·en
+        assertEquals(1 + 3 + 2, calls.size)
         assertEquals(10, calls.first().strokes.size)
     }
 

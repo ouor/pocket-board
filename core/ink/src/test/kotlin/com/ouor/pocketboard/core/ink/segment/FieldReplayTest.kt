@@ -60,19 +60,37 @@ class FieldReplayTest {
 
     @Test
     fun stackedSyllables_fieldCases_recoverDroppedSyllables() = runTest {
-        // 현장 3차: "사람이면" 의 이·면 이 12획 한 묶음 → "사람면". 겹친 음절 나누기 뒤 "사람이면"
-        for ((file, expected) in listOf("ink-1793166626969.json" to "대한민국 사람이면 10일공", "ink-1793166672370.json" to "요즘이트에전화 하면상학원연결안되고 챗물만문하고")) {
+        // 현장 3차: 2~3음절이 한 칸에 겹친 묶음. 6획 이상이면 나눌 자리를 ML Kit 으로 찾는다
+        // 626969: "이면"(12획)→"면" 이던 것이 "사람이면". 672370: "담원"(6획)·"하면"(8획) 되살림. 691193: "버림"(6획)→"림" 이던 것이 "어김"
+        val expected = mapOf(
+            "ink-1793166626969.json" to "대한 민국사람이면 10일공",
+            "ink-1793166672370.json" to "요즘이단에전화 하면상담원연결안되고 챗물로만문하고",
+            "ink-1793166691193.json" to "끊어김",
+        )
+        for ((file, text) in expected) {
             val items = load(file).items()
             val recorded = Json.decodeFromString(InkReport.serializer(), javaClass.getResource("/field/recorded/$file")!!.readText())
             val engine = RecordedInkEngine(items, recorded)
             val r = replayInk(items, recorded, engine)
-            assertEquals(file, expected, r.text)
+            assertEquals(file, text, r.text)
             assertEquals(file, 0, engine.misses)
             assertTrue(file, "split/stacked-syllables" in r.ruleIds)
             val stacked = r.words.single().splits.filter { it.ruleId == "split/stacked-syllables" }
-            assertTrue(file, stacked.isNotEmpty() && stacked.all { it.parts != null })
+            assertTrue(file, stacked.any { it.parts != null })
             assertTrue(file, stacked.sumOf { it.tries.size } <= InkConfig().maxSplitCalls)
         }
+    }
+
+    @Test
+    fun stackedSyllables_realSingleSyllable_kept() = runTest {
+        // 691193 의 "끊"(6획, 한 칸): 자를 자리 3곳 모두 "끊" 한 음절로 읽혀 나누지 않는다
+        val file = "ink-1793166691193.json"
+        val items = load(file).items()
+        val recorded = Json.decodeFromString(InkReport.serializer(), javaClass.getResource("/field/recorded/$file")!!.readText())
+        val r = replayInk(items, recorded, RecordedInkEngine(items, recorded))
+        val kept = r.words.single().splits.single { it.ruleId == "split/stacked-syllables" && it.parts == null }
+        assertEquals(listOf("끊", "끊", "끊"), kept.tries.map { it.reading })
+        assertTrue(r.text.startsWith("끊"))
     }
 
     @Test

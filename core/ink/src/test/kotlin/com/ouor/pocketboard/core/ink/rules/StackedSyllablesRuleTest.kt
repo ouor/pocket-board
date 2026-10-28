@@ -11,10 +11,10 @@ class StackedSyllablesRuleTest {
     private fun strokes(n: Int, step: Float = 10f) = List(n) { line(it * step, 0f, it * step, 100f, it * 120L) }
 
     @Test
-    fun tenStrokes_inOneCharFootprint_isStacked() = assertEquals(true, rule.apply(StackInput(strokes(10))))
+    fun sixStrokes_inOneCharFootprint_isStacked() = assertEquals(true, rule.apply(StackInput(strokes(6))))
 
     @Test
-    fun fewerStrokes_passes() = assertNull(rule.apply(StackInput(strokes(9))))   // 한 음절(98.4% 가 9획 이하)
+    fun fewerStrokes_passes() = assertNull(rule.apply(StackInput(strokes(5))))   // 기본 6획 미만
 
     @Test
     fun wideRow_passes() = assertNull(rule.apply(StackInput(strokes(10, step = 20f))))   // 가로 180 > 세로 100 × 1.4: 이어 쓴 줄

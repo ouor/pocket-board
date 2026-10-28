@@ -1,6 +1,7 @@
 package com.ouor.pocketboard.data
 
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -48,6 +49,16 @@ class SettingsCodecTest {
         assertEquals(2f, s.ink.config.rightOfGapRatio)
         SettingsCodec.encode(s, p)
         assertEquals(null, p[floatPreferencesKey("ink_right_of_gap_ratio")])
+    }
+
+    @Test
+    fun oldStoredStackedMinStrokesIsDropped() {
+        val p = mutablePreferencesOf(intPreferencesKey("ink_stacked_min_strokes") to 10)
+        val s = SettingsCodec.decode(p)
+        assertEquals(6, s.ink.config.stackedMinStrokes)
+        SettingsCodec.encode(s, p)
+        assertEquals(null, p[intPreferencesKey("ink_stacked_min_strokes")])
+        assertEquals(6, p[intPreferencesKey("ink_stacked_min_strokes_v2")])
     }
 
     @Test

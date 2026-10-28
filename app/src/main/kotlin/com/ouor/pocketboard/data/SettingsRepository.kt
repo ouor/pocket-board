@@ -86,7 +86,8 @@ internal object SettingsCodec {
     private val INK_MAX_HYPOTHESIS = intPreferencesKey("ink_max_hypothesis_calls")
     private val INK_SPLIT_STROKE_RATIO = floatPreferencesKey("ink_split_stroke_ratio")
     private val INK_MAX_SPLIT = intPreferencesKey("ink_max_split_calls")
-    private val INK_STACKED_MIN = intPreferencesKey("ink_stacked_min_strokes")
+    private val INK_STACKED_MIN = intPreferencesKey("ink_stacked_min_strokes_v2")
+    private val INK_STACKED_MIN_V1 = intPreferencesKey("ink_stacked_min_strokes")   // 기본값 10 시절 저장분은 버린다
     private val TAP_SLOP = floatPreferencesKey("gesture_tap_slop_dp")
     private val TAP_MAX = longPreferencesKey("gesture_tap_max_ms")
     private val MULTI_TAP_GAP = longPreferencesKey("gesture_multi_tap_gap_ms")
@@ -186,6 +187,7 @@ internal object SettingsCodec {
         p[INK_SPLIT_STROKE_RATIO] = s.ink.config.splitStrokeRatio
         p[INK_MAX_SPLIT] = s.ink.config.maxSplitCalls
         p[INK_STACKED_MIN] = s.ink.config.stackedMinStrokes
+        p.remove(INK_STACKED_MIN_V1)
         p[TAP_SLOP] = s.gesture.tapSlopDp
         p[TAP_MAX] = s.gesture.tapMaxMs
         p[MULTI_TAP_GAP] = s.gesture.multiTapGapMs

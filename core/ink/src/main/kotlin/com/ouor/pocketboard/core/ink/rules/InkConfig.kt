@@ -36,10 +36,12 @@ data class InkConfig(
     /** Split: 단어 하나당 나눌 자리를 찾는 추가 인식 호출 상한(지연 예산). 겹친 음절 나누기(split/stacked-syllables)도 따로 같은 상한. */
     val maxSplitCalls: Int = 8,
     /**
-     * 겹친 음절(읽기 전): 글자 하나 넓이(가로 ≤ 세로 × [STACKED_MAX_ASPECT])인 묶음의 획 수가 이 값 이상이면 음절 2개 이상이
-     * 겹친 것으로 보고 나눌 자리를 찾는다(0 = 끔). 자막 말뭉치 음절의 98.4% 가 표준 9획 이하(흘림은 더 적다).
+     * 겹친 음절(읽기 전): 글자 하나 넓이(가로 ≤ 세로 × [StackedSyllablesRule.STACKED_MAX_ASPECT])인 묶음의 획 수가 이 값 이상이면
+     * 음절 2개 이상이 겹쳤을 수 있다고 보고 나눌 자리를 ML Kit 으로 찾는다(0 = 끔). 현장 3차: 흘려 쓴 2~3음절 묶음이 6~9획
+     * ("상담원"의 담원 6, "어버림"의 버림 6, "한민국" 7). 6~9획 한 음절("끊")은 조각이 음절 2~3개로 읽히지 않아 그대로 둔다.
+     * 10(말뭉치 음절의 98.4% 가 표준 9획 이하)이던 것을 6 으로 낮췄다(docs/core/ink.md §6.1 회귀 확인).
      */
-    val stackedMinStrokes: Int = 10,
+    val stackedMinStrokes: Int = 6,
 ) {
     // 범위는 docs/core/ink.md §3 표와 같다. 설정 저장소(:app)가 범위 밖 값을 넘기면 프로그래머 오류.
     init {

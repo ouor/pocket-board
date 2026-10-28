@@ -194,8 +194,8 @@ class OverlapSplitTest {
             val out = run(listOf(glyph), listOf(0f), InkConfig())
             assertEquals(text, out.text)
             assertEquals(text, listOf("candidate/ko-hangul"), out.ruleIds - "segment/first")   // 끊김·나누기·합침 없음
-            // 뷁(13획, 한 칸)은 겹친 음절 후보라 자를 자리 3곳을 읽어 보고(음절 2~3개로 안 읽혀) 그대로 둔다
-            assertEquals(text, if (glyph === BWELK) 2 + 3 else 2, calls.size)
+            // 한(6획)·뷁(13획)은 한 칸에 6획 이상이라 겹친 음절 후보: 자를 자리 3곳을 읽어 보고(음절 2~3개로 안 읽혀) 그대로 둔다
+            assertEquals(text, if (glyph === HAN || glyph === BWELK) 2 + 3 else 2, calls.size)
         }
         // 옛 S2(0.3): 뷁의 ㅂ 둘째 세로획이 right-of 로 끊겨 합침 확인 1회로 되돌렸다
         calls.clear()
