@@ -8,8 +8,9 @@ import com.ouor.pocketboard.core.common.rule.Rule
  * | 단계 | id | 조건 | 결론 | 근거 |
  * |---|---|---|---|---|
  * | Segment | segment/first | 단어 첫 획 | NEW_CHAR | - |
- * | Segment | segment/right-of | 새 획 왼쪽 > 묶음 오른쪽 + 글자 크기×0.3 | NEW_CHAR | 이어 쓰기(ink.md §4.3 S2) |
+ * | Segment | segment/right-of | 새 획 왼쪽 > 묶음 오른쪽 + 글자 크기×2 | NEW_CHAR | 멀리 떨어진 새 글자(S2). 0.3 이던 기본값은 빠른 줄 쓰기에서 첫 자음을 잘랐다 |
  * | Segment | segment/same-spot-restart | 새 획 점 60% 이상이 묶음 상자 안 + 쉼 ≥ 350ms | NEW_CHAR | 겹쳐 쓰기(S3) |
+ * | Segment | segment/top-left-restart | 묶음 2획 이상 + 새 획이 직전 획 끝에서 글자 크기×0.4 이상 왼쪽으로 되돌아가 묶음 상자 왼쪽 위(×0.4 안)에서 시작 | NEW_CHAR | 빠른 겹쳐 쓰기(쉼 40~150ms), ink-overlap.md |
  * | Segment | segment/long-pause | 쉼 ≥ 500ms(자리 무관) | NEW_CHAR | 현장 "이게": ㅣ 만 남은 묶음 밖에서 1.1~2.0s 뒤 시작 |
  * | Segment | (기본) | 나머지 | SAME_CHAR | |
  * | Candidate | candidate/empty | ko·en 1순위 모두 비어 있음 | "" (Empty) | D9 |
@@ -37,6 +38,7 @@ fun defaultInkRules(config: InkConfig = InkConfig()) = InkRules(
         FirstStrokeRule,
         RightOfRule(config),          // 이어 쓰기가 먼저: 오른쪽에 떨어진 획은 쉼과 상관없이 새 글자
         SameSpotRestartRule(config),
+        TopLeftRestartRule(config),   // 쉼 없는 겹쳐 쓰기: 위치(왼쪽 위로 되돌아감)만으로
         LongPauseRule(config),        // 맨 뒤: 같은 자리 재시작이 못 잡은(묶음 밖) 긴 쉼만
     ),
     candidate = listOf(

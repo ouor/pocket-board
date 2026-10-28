@@ -12,7 +12,7 @@ import org.junit.Test
 class SettingsCodecTest {
     @Test
     fun inkConfigRoundTrips() {
-        val s = AppSettings(ink = AppSettings().ink.copy(config = InkConfig(restartPauseMs = 425, newCharPauseMs = 900, rightOfGapRatio = 1.5f)))
+        val s = AppSettings(ink = AppSettings().ink.copy(config = InkConfig(restartPauseMs = 425, newCharPauseMs = 900, rightOfGapRatio = 1.5f, topLeftCornerRatio = 0.35f, topLeftBackRatio = 0.6f)))
         val p = mutablePreferencesOf()
         SettingsCodec.encode(s, p)
         assertEquals(s, SettingsCodec.decode(p))
@@ -39,6 +39,15 @@ class SettingsCodecTest {
         SettingsCodec.encode(s.copy(ink = s.ink.copy(config = s.ink.config.copy(newCharPauseMs = 700))), p)
         assertEquals(null, p[longPreferencesKey("ink_new_char_pause_ms")])
         assertEquals(700L, SettingsCodec.decode(p).ink.config.newCharPauseMs) // 새로 고른 값은 유지
+    }
+
+    @Test
+    fun oldStoredRightOfGapDefaultIsDropped() {
+        val p = mutablePreferencesOf(floatPreferencesKey("ink_right_of_gap_ratio") to 0.3f)
+        val s = SettingsCodec.decode(p)
+        assertEquals(2f, s.ink.config.rightOfGapRatio)
+        SettingsCodec.encode(s, p)
+        assertEquals(null, p[floatPreferencesKey("ink_right_of_gap_ratio")])
     }
 
     @Test

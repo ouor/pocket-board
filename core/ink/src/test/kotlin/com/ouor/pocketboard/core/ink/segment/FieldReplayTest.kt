@@ -4,6 +4,7 @@ import com.ouor.pocketboard.core.common.ink.InkItem
 import com.ouor.pocketboard.core.common.ink.InkPoint
 import com.ouor.pocketboard.core.common.ink.InkStroke
 import com.ouor.pocketboard.core.ink.InkReport
+import com.ouor.pocketboard.core.ink.rules.InkConfig
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -28,10 +29,33 @@ class FieldReplayTest {
     private fun load(name: String): FieldInk =
         Json { ignoreUnknownKeys = true }.decodeFromString(FieldInk.serializer(), javaClass.getResource("/field/$name")!!.readText())
 
+    /** 녹화 당시 분할(S5 왼쪽 위 되돌아감 없음)로 다시 돌린다: 그 뒤 단계(Split·Text)를 같은 인식기 답으로 확인. */
     private suspend fun replay(name: String): Pair<InkReport, RecordedInkEngine> {
         val f = load(name)
-        val engine = RecordedInkEngine(f.items(), f.report)
-        return replayInk(f.items(), f.report, engine) to engine
+        val report = f.report.copy(config = f.report.config.copy(topLeftCornerRatio = 0f))
+        val engine = RecordedInkEngine(f.items(), report)
+        return replayInk(f.items(), report, engine) to engine
+    }
+
+    /**
+     * 현 기본값 회귀: 사례마다 기기(실제 ML Kit, FieldEvalTest dump)에서 녹화한 보고서(field/recorded/)의 인식기 답으로 다시 돌려
+     * 같은 결과가 나와야 한다. miss 가 나면 분할·재배치가 바뀐 것: 기기에서 FieldEvalTest 로 CER 을 다시 재고 녹화를 갈아 끼운다.
+     */
+    @Test
+    fun allCases_currentDefaults_reproduceDeviceRecording() = runTest {
+        val cases = javaClass.getResource("/field/cases.tsv")!!.readText().lines().filter { it.isNotBlank() && !it.startsWith("#") }
+        assertEquals(10, cases.size)
+        for (line in cases) {
+            val file = line.substringBefore('\t')
+            val items = load(file).items()
+            val recorded = Json.decodeFromString(InkReport.serializer(), javaClass.getResource("/field/recorded/$file")!!.readText())
+            assertEquals(file, InkConfig(), recorded.config)
+            val engine = RecordedInkEngine(items, recorded)
+            val again = replayInk(items, recorded, engine)
+            assertEquals(file, 0, engine.misses)
+            assertEquals(file, recorded.text, again.text)
+            assertEquals(file, recorded.words.map { it.clusters }, again.words.map { it.clusters })
+        }
     }
 
     @Test

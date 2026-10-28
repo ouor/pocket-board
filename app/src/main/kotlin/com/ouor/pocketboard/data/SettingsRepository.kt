@@ -76,7 +76,11 @@ internal object SettingsCodec {
     private val INK_NEW_CHAR_PAUSE_V1 = longPreferencesKey("ink_new_char_pause_ms")
     private val INK_RESTART_OVERLAP = floatPreferencesKey("ink_restart_overlap_ratio")
     private val INK_RESTART_MARGIN = floatPreferencesKey("ink_restart_margin_ratio")
-    private val INK_RIGHT_OF_GAP = floatPreferencesKey("ink_right_of_gap_ratio")
+    // v2: encode 가 늘 써 둔 옛 기본값 0.3 이 빠른 줄 쓰기에서 줄 첫 자음을 잘랐다. 버리고 새 기본값(2.0)을 쓴다.
+    private val INK_RIGHT_OF_GAP = floatPreferencesKey("ink_right_of_gap_ratio_v2")
+    private val INK_RIGHT_OF_GAP_V1 = floatPreferencesKey("ink_right_of_gap_ratio")
+    private val INK_TOP_LEFT_CORNER = floatPreferencesKey("ink_top_left_corner_ratio")
+    private val INK_TOP_LEFT_BACK = floatPreferencesKey("ink_top_left_back_ratio")
     private val INK_RELAYOUT_GAP = floatPreferencesKey("ink_relayout_gap_ratio")
     private val INK_MIN_CHAR_SIZE = floatPreferencesKey("ink_min_char_size_dp")
     private val INK_MAX_HYPOTHESIS = intPreferencesKey("ink_max_hypothesis_calls")
@@ -127,6 +131,8 @@ internal object SettingsCodec {
                     restartMarginRatio = (p[INK_RESTART_MARGIN] ?: i.restartMarginRatio).coerceIn(InkRanges.ratio),
                     restartPauseMs = (p[INK_RESTART_PAUSE] ?: i.restartPauseMs).coerceIn(InkRanges.restartPauseMs),
                     newCharPauseMs = (p[INK_NEW_CHAR_PAUSE] ?: i.newCharPauseMs).coerceIn(InkRanges.newCharPauseMs),
+                    topLeftCornerRatio = (p[INK_TOP_LEFT_CORNER] ?: i.topLeftCornerRatio).coerceIn(InkRanges.ratio),
+                    topLeftBackRatio = (p[INK_TOP_LEFT_BACK] ?: i.topLeftBackRatio).coerceIn(InkRanges.topLeftBackRatio),
                     relayoutGapRatio = (p[INK_RELAYOUT_GAP] ?: i.relayoutGapRatio).coerceIn(InkRanges.ratio),
                     maxHypothesisCalls = (p[INK_MAX_HYPOTHESIS] ?: i.maxHypothesisCalls).coerceIn(InkRanges.maxHypothesisCalls),
                     splitStrokeRatio = (p[INK_SPLIT_STROKE_RATIO] ?: i.splitStrokeRatio).coerceIn(InkRanges.splitStrokeRatio),
@@ -169,6 +175,9 @@ internal object SettingsCodec {
         p[INK_RESTART_OVERLAP] = s.ink.config.restartOverlapRatio
         p[INK_RESTART_MARGIN] = s.ink.config.restartMarginRatio
         p[INK_RIGHT_OF_GAP] = s.ink.config.rightOfGapRatio
+        p.remove(INK_RIGHT_OF_GAP_V1)
+        p[INK_TOP_LEFT_CORNER] = s.ink.config.topLeftCornerRatio
+        p[INK_TOP_LEFT_BACK] = s.ink.config.topLeftBackRatio
         p[INK_RELAYOUT_GAP] = s.ink.config.relayoutGapRatio
         p[INK_MIN_CHAR_SIZE] = s.ink.config.minCharSize
         p[INK_MAX_HYPOTHESIS] = s.ink.config.maxHypothesisCalls
@@ -196,6 +205,7 @@ object InkRanges {
     val ratio = 0f..1f
     val restartPauseMs = 0L..2000L
     val newCharPauseMs = 0L..3000L
+    val topLeftBackRatio = 0f..2f
     val maxHypothesisCalls = 0..10
     val splitStrokeRatio = 1f..5f
     val maxSplitCalls = 0..12

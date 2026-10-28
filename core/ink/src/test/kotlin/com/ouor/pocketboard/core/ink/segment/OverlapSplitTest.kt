@@ -36,7 +36,7 @@ class OverlapSplitTest {
         seg(5f, 5f, 40f, 40f), seg(40f, 20f, 60f, 20f), seg(40f, 40f, 60f, 40f), seg(60f, 0f, 60f, 60f), seg(20f, 70f, 70f, 95f),
     ))
     private val BWELK = g(*Array(12) { "?" }, "뷁", shapes = listOf(
-        seg(5f, 5f, 5f, 30f), seg(35f, 5f, 35f, 30f), seg(5f, 15f, 35f, 15f), seg(5f, 30f, 35f, 30f),   // ㅂ
+        seg(5f, 5f, 5f, 30f), seg(35f, 5f, 35f, 30f), seg(5f, 18f, 35f, 18f), seg(5f, 30f, 35f, 30f),   // ㅂ(가운데 획은 높이 절반)
         seg(5f, 40f, 55f, 40f), seg(30f, 40f, 30f, 55f),                                                 // ㅜ
         seg(55f, 30f, 62f, 30f), seg(62f, 5f, 62f, 60f), seg(72f, 5f, 72f, 60f),                         // ㅔ
         seg(5f, 65f, 40f, 65f), seg(40f, 65f, 5f, 80f), seg(5f, 80f, 40f, 95f),                          // ㄹ
@@ -90,9 +90,12 @@ class OverlapSplitTest {
         if (lang == InkLanguage.EN && text.any { it.code >= 128 }) emptyList() else listOf(text)
     }
 
-    private fun pipeline(config: InkConfig = InkConfig()) = InkPipeline(engine, config, defaultInkRules(config)) { logs += it }
+    private fun pipeline(config: InkConfig = legacy) = InkPipeline(engine, config, defaultInkRules(config)) { logs += it }
 
-    private suspend fun run(glyphs: List<Glyph>, xs: List<Float>, config: InkConfig = InkConfig()) =
+    /** Split·right-of 합침 확인 장치만 보려고 S2 를 옛 값(0.3)으로, S5(왼쪽 위 되돌아감)를 끈다. 기본값 동작은 defaults_* 테스트. */
+    private val legacy = InkConfig(rightOfGapRatio = 0.3f, topLeftCornerRatio = 0f)
+
+    private suspend fun run(glyphs: List<Glyph>, xs: List<Float>, config: InkConfig = legacy) =
         pipeline(config).recognize(write(glyphs, xs), "", SegmentationMode.RULES) as RecognitionOutcome.Text
 
     @Test
@@ -123,7 +126,7 @@ class OverlapSplitTest {
 
     @Test
     fun overlapped_kkkk_overBudget_keepsFirstReading() = runTest {
-        assertEquals("ㅋ", run(List(4) { KIEUK }, List(4) { 0f }, InkConfig(maxSplitCalls = 3)).text)
+        assertEquals("ㅋ", run(List(4) { KIEUK }, List(4) { 0f }, legacy.copy(maxSplitCalls = 3)).text)
         assertEquals(2 + 3, calls.size)
     }
 
@@ -162,6 +165,23 @@ class OverlapSplitTest {
     }
 
     @Test
+    fun defaults_overlappedKkkk_cutByTopLeftReturn_noExtraCalls() = runTest {
+        // 기본값: 둘째 ㅋ 첫 획이 왼쪽 위로 되돌아가 시작 → 분할에서 바로 끊겨 Split·추가 호출이 필요 없다
+        val out = run(List(4) { KIEUK }, List(4) { 0f }, InkConfig())
+        assertEquals("ㅋㅋㅋㅋ", out.text)
+        assertTrue("segment/top-left-restart" in out.ruleIds)
+        assertEquals(2, calls.size)
+    }
+
+    @Test
+    fun defaults_sideBySide_oneRow_noExtraCalls() = runTest {
+        // 기본값: 이어 쓴 글자는 한 묶음(줄). 재배치가 옮기지 않으므로 그대로 한 번 읽는다
+        val out = run(List(4) { KIEUK }, listOf(0f, 130f, 260f, 390f), InkConfig())
+        assertEquals("ㅋㅋㅋㅋ", out.text)
+        assertEquals(2, calls.size)
+    }
+
+    @Test
     fun single_k() = runTest {
         assertEquals("ㅋ", run(listOf(KIEUK), listOf(0f)).text)
         assertEquals(2, calls.size)
@@ -169,20 +189,22 @@ class OverlapSplitTest {
 
     @Test
     fun multiStrokeSyllables_inPlace_unchanged() = runTest {
-        // 뷁: ㅂ 둘째 세로획이 첫 세로획(높이 25) 오른쪽으로 떨어져 right-of 로 끊김 → 합침 확인 1회로 다시 한 글자
-        for ((glyph, text, merges) in listOf(Triple(GA, "가", 0), Triple(HAN, "한", 0), Triple(NYEONG, "녕", 0), Triple(BWELK, "뷁", 1))) {
+        for ((glyph, text) in listOf(GA to "가", HAN to "한", NYEONG to "녕", BWELK to "뷁")) {
             calls.clear()
-            val out = run(listOf(glyph), listOf(0f))
+            val out = run(listOf(glyph), listOf(0f), InkConfig())
             assertEquals(text, out.text)
-            assertTrue(text, "split/stroke-excess" !in out.ruleIds)
-            assertEquals(text, merges == 1, "merge/single-syllable" in out.ruleIds)
-            assertEquals(text, 2 + merges, calls.size)
+            assertEquals(text, listOf("candidate/ko-hangul"), out.ruleIds - "segment/first")   // 끊김·나누기·합침 없음
+            assertEquals(text, 2, calls.size)
         }
+        // 옛 S2(0.3): 뷁의 ㅂ 둘째 세로획이 right-of 로 끊겨 합침 확인 1회로 되돌렸다
+        calls.clear()
+        assertTrue("merge/single-syllable" in run(listOf(BWELK), listOf(0f)).ruleIds)
+        assertEquals(3, calls.size)
     }
 
     @Test
     fun englishWord_continuous_unchanged() = runTest {
-        val out = run(listOf(H, I), listOf(0f, 0f))
+        val out = run(listOf(H, I), listOf(0f, 0f), InkConfig())
         assertEquals("hi", out.text)
         assertEquals(2, calls.size)
     }

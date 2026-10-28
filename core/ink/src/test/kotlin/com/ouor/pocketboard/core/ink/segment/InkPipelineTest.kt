@@ -20,6 +20,9 @@ class InkPipelineTest {
     private var answer: (Call) -> List<String> = { emptyList() }
     private val engine = InkEngine { lang, strokes, pre, _ -> Call(lang, strokes, pre).also { calls += it }.let(answer) }
     private val pipeline = InkPipeline(engine, InkConfig(), defaultInkRules())
+    // right-of 합침 확인 장치용: S2 를 옛 값(0.3)으로
+    private val rightOf = InkConfig(rightOfGapRatio = 0.3f)
+    private val rightOfPipeline = InkPipeline(engine, rightOf, defaultInkRules(rightOf))
 
     private fun stroke(s: InkStroke, id: Long = 0) = InkItem.Stroke(id, s)
 
@@ -69,7 +72,7 @@ class InkPipelineTest {
     @Test
     fun rules_rightOfVowel_mergedBackIntoSyllable() = runTest {
         answer = { c -> if (c.lang == InkLanguage.KO && c.strokes == listOf(ieung, bar)) listOf("이") else emptyList() }
-        val out = pipeline.recognize(listOf(stroke(ieung), stroke(bar)), "", SegmentationMode.RULES)
+        val out = rightOfPipeline.recognize(listOf(stroke(ieung), stroke(bar)), "", SegmentationMode.RULES)
 
         assertEquals("이", (out as RecognitionOutcome.Text).text)
         assertEquals(3, calls.size)   // 합침 확인 1 + ko + en
@@ -90,8 +93,15 @@ class InkPipelineTest {
         val out = pipeline.recognize(listOf(stroke(ieung), stroke(bar), stroke(next)), "", SegmentationMode.RULES)
 
         assertEquals("이게", (out as RecognitionOutcome.Text).text)
-        assertTrue(out.ruleIds.toString(), "segment/long-pause" in out.ruleIds && "merge/single-syllable" in out.ruleIds)
+        // 기본값은 ㅇ|ㅣ 를 처음부터 안 끊으므로 묶음 상자가 이 전체라 같은 자리 재시작이 잡고, 합침 확인이 없다
+        assertTrue(out.ruleIds.toString(), "segment/same-spot-restart" in out.ruleIds)
         assertTrue(calls.last().strokes[2].bounds().left > bar.bounds().right)
+        assertEquals(2, calls.size)
+
+        calls.clear()   // 옛 S2(0.3): ㅇ|ㅣ 를 끊고 합침 확인으로 되돌린다
+        val legacy = rightOfPipeline.recognize(listOf(stroke(ieung), stroke(bar), stroke(next)), "", SegmentationMode.RULES)
+        assertEquals("이게", (legacy as RecognitionOutcome.Text).text)
+        assertTrue(legacy.ruleIds.toString(), "merge/single-syllable" in legacy.ruleIds && "segment/long-pause" in legacy.ruleIds)
     }
 
     @Test

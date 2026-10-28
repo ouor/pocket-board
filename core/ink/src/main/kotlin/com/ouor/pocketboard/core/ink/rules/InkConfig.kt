@@ -10,8 +10,11 @@ import kotlinx.serialization.Serializable
 @Serializable   // InkReport 에 그대로 남긴다
 data class InkConfig(
     val minCharSize: Float = 24f,
-    /** S2: 새 획 왼쪽이 묶음 오른쪽 + 글자 크기 × 이 값보다 오른쪽이면 새 글자. */
-    val rightOfGapRatio: Float = 0.3f,
+    /**
+     * S2: 새 획 왼쪽이 묶음 오른쪽 + 글자 크기 × 이 값보다 오른쪽이면 새 글자. 현장(빠른 흘림, 2~3음절 줄): 줄 안 음절 간격이
+     * 글자 크기의 0.3~0.6 이라 0.3 이면 줄 첫 자음·모음을 잘라냈다. 이어 쓴 음절은 한 묶음이어도 재배치가 안 옮기므로 끊을 이득이 없다.
+     */
+    val rightOfGapRatio: Float = 2f,
     /** S3: 새 획 점 중 묶음 상자(여유 포함) 안에 든 비율이 이 값 이상이고 */
     val restartOverlapRatio: Float = 0.6f,
     /** S3: 상자 여유 = 글자 크기 × 이 값. */
@@ -20,6 +23,10 @@ data class InkConfig(
     val restartPauseMs: Long = 350,
     /** S4: 직전 획 끝 → 새 획 시작 쉼이 이 값 이상이면 자리와 상관없이 새 글자. 현장: 글자 안 ≤347ms, 글자 사이 575ms~. */
     val newCharPauseMs: Long = 500,
+    /** S5: 새 획 시작점이 묶음 상자 왼쪽 위(글자 크기 × 이 값 안)에 있고(0 = 끔) */
+    val topLeftCornerRatio: Float = 0.4f,
+    /** S5: 직전 획 끝에서 왼쪽으로 글자 크기 × 이 값 이상 되돌아가 시작하면 새 글자(한글 음절은 왼쪽 위 초성부터). */
+    val topLeftBackRatio: Float = 0.4f,
     /** 재배치 시 묶음 사이 간격 = 앞 묶음 높이 × 이 값. */
     val relayoutGapRatio: Float = 0.2f,
     /** 합침 확인(B: right-of 경계, C: + same-spot-restart 경계)에서 단어 하나당 추가 인식 호출 상한(지연 예산). */
@@ -37,6 +44,8 @@ data class InkConfig(
         require(restartMarginRatio in 0f..1f) { "restartMarginRatio $restartMarginRatio" }
         require(restartPauseMs in 0L..2000L) { "restartPauseMs $restartPauseMs" }
         require(newCharPauseMs in 0L..3000L) { "newCharPauseMs $newCharPauseMs" }
+        require(topLeftCornerRatio in 0f..1f) { "topLeftCornerRatio $topLeftCornerRatio" }
+        require(topLeftBackRatio in 0f..2f) { "topLeftBackRatio $topLeftBackRatio" }
         require(relayoutGapRatio in 0f..1f) { "relayoutGapRatio $relayoutGapRatio" }
         require(maxHypothesisCalls in 0..10) { "maxHypothesisCalls $maxHypothesisCalls" }
         require(splitStrokeRatio in 1f..5f) { "splitStrokeRatio $splitStrokeRatio" }

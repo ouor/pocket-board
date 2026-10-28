@@ -32,7 +32,9 @@ class InkReportTest {
 
     private suspend fun record(): Pair<RecognitionOutcome, InkReport> {
         var report: InkReport? = null
-        val out = InkPipeline(engine, InkConfig(), defaultInkRules()).recognize(items, "앞", SegmentationMode.RULES) { report = it }
+        // right-of 합침 확인까지 기록되게 S2 를 옛 값(0.3)으로
+        val config = InkConfig(rightOfGapRatio = 0.3f)
+        val out = InkPipeline(engine, config, defaultInkRules(config)).recognize(items, "앞", SegmentationMode.RULES) { report = it }
         return out to report!!
     }
 

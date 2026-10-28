@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class RightOfRuleTest {
-    private val rule = RightOfRule(InkConfig())
+    private val rule = RightOfRule(InkConfig(rightOfGapRatio = 0.3f))
     private val current = listOf(box(0f, 0f, 100f, 0))   // 높이 100 → 간격 30
 
     @Test
