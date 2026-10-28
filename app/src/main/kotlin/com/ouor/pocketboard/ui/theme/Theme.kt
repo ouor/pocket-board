@@ -49,8 +49,11 @@ data class PocketColors(
     val problem: Color = Scheme.error,
     val idle: Color = Scheme.outline,
     val inkBlack: Color = Color.Black,
-    val inkDim: Color = Color(0xFF2C2C2C),
-    val inkDimStrong: Color = Color(0xFF3A3A3A),
+    // 쓰기 화면 전용, 창 밝기 10% 기준(sc09-writing-v2 §4.1). 안 보이면 값만 올린다.
+    val inkFaint: Color = Color(0xFF262626),
+    val inkDim: Color = Color(0xFF4A4A4A),
+    val inkDimStrong: Color = Color(0xFF555555),
+    val inkTrail: Color = Color(0xFF6E6E6E),
 )
 
 val LocalPocketColors = staticCompositionLocalOf { PocketColors() }

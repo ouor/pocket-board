@@ -25,11 +25,29 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.max
+
+/** 세션 → 화면 일회성 알림(SC09 v2 §5.1). 화면이 효과·동작 표시를 고르는 데만 쓴다. */
+sealed interface WritingEvent {
+    /** 인식 글을 보냄(Done·Aborted). [strokes]는 보낸 획. */
+    data class Sent(val text: String, val strokes: List<InkStroke>) : WritingEvent
+    /** B7: 보내지 않은 마지막 획 하나를 지움. */
+    data class StrokeRemoved(val stroke: InkStroke) : WritingEvent
+    /** 쓰던 획을 버림: 덩어리 지우기, 또는 인식 실패([failed]). */
+    data class StrokesDiscarded(val strokes: List<InkStroke>, val failed: Boolean) : WritingEvent
+    /** 호스트로 키만 보냄: ENTER(빈 상태 보내기 포함)·SPACE·BACKSPACE·CHUNK_DELETE. */
+    data class KeySent(val action: Action) : WritingEvent
+    data object Resynced : WritingEvent
+    /** 전송 시 미연결(E1). 획은 그대로. */
+    data object NotConnected : WritingEvent
+}
 
 /**
  * 쓰기 화면 한 번의 수명 동안 터치 → 제스처/잉크 → 인식 → 키 변환 → HID 전송 → 이력/진동을 잇는다(architecture §5).
@@ -89,8 +107,13 @@ class WritingSession(
 
     private val _lastSent = MutableStateFlow<List<String>>(emptyList())
 
-    /** 최근 보낸 글(Done·Aborted), 오래된 것부터 최대 [LAST_SENT_MAX]개. */
+    /** 최근 보낸 글(Done·Aborted), 오래된 것부터 최대 [LAST_SENT_MAX]개. 호스트 덩어리 지우기는 마지막 것을 뺀다(SC09 v2 Q3). */
     val lastSent: StateFlow<List<String>> = _lastSent.asStateFlow()
+
+    private val _writingEvents = MutableSharedFlow<WritingEvent>(extraBufferCapacity = 16)
+
+    /** 화면 피드백용 일회성 알림. 구독자가 없으면 버린다. */
+    val writingEvents: SharedFlow<WritingEvent> = _writingEvents.asSharedFlow()
 
     private val _edgeBandDp = MutableStateFlow(0f)
 
@@ -104,7 +127,7 @@ class WritingSession(
             for (e in events) {
                 if (e is Event.Act && e.action == Action.SEND) previewJob?.cancel() // 전송과 인식을 겹치지 않음
                 process(e)
-                _strokes.value = buffer.mapNotNull { (it as? InkItem.Stroke)?.stroke }
+                _strokes.value = buffer.strokes()
                 refreshPreview()
             }
         }
@@ -232,27 +255,33 @@ class WritingSession(
         Log.i(TAG, "act $action buffer=${buffer.size}")
         when (action) {
             Action.SEND -> if (buffer.isEmpty()) {
-                if (emptySendEnter()) send(keyInput.enter(), HapticPattern.ENTER)
+                if (emptySendEnter()) sendKey(Action.ENTER, keyInput.enter(), HapticPattern.ENTER)
             } else sendInk()
-            Action.ENTER -> send(keyInput.enter(), HapticPattern.ENTER)
-            Action.SPACE -> if (buffer.isEmpty()) send(keyInput.space(), HapticPattern.SPACE) else {
+            Action.ENTER -> sendKey(Action.ENTER, keyInput.enter(), HapticPattern.ENTER)
+            Action.SPACE -> if (buffer.isEmpty()) sendKey(Action.SPACE, keyInput.space(), HapticPattern.SPACE) else {
                 buffer += InkItem.Space // 단어 경계(ink §3)
                 play(HapticPattern.SPACE)
             }
-            Action.BACKSPACE -> if (buffer.isEmpty()) send(keyInput.backspace(), HapticPattern.BACKSPACE) else {
-                buffer.removeAt(buffer.lastIndex) // B7: 마지막 획(또는 그 뒤 스페이스) 하나만, 호스트로는 안 보냄
+            Action.BACKSPACE -> if (buffer.isEmpty()) sendKey(Action.BACKSPACE, keyInput.backspace(), HapticPattern.BACKSPACE) else {
+                val removed = buffer.removeAt(buffer.lastIndex) // B7: 마지막 획(또는 그 뒤 스페이스) 하나만, 호스트로는 안 보냄
+                if (removed is InkItem.Stroke) emit(WritingEvent.StrokeRemoved(removed.stroke))
                 play(HapticPattern.BACKSPACE)
             }
             Action.CHUNK_DELETE -> if (buffer.isEmpty()) {
                 val plan = keyInput.chunkDelete()
-                if (plan.units.isNotEmpty()) send(plan, HapticPattern.CHUNK_DELETE) // 비면 E11: 아무것도 안 함
+                // 비면 E11: 아무것도 안 함
+                if (plan.units.isNotEmpty() && sendKey(Action.CHUNK_DELETE, plan, HapticPattern.CHUNK_DELETE)) {
+                    _lastSent.value = _lastSent.value.dropLast(1) // 지운 덩어리를 최근 글로 보여 주지 않음
+                }
             } else {
+                emit(WritingEvent.StrokesDiscarded(_strokes.value, failed = false))
                 buffer.clear() // PRD §3.3: 쓰던 획 전부 버림
                 play(HapticPattern.CHUNK_DELETE)
             }
             Action.RESYNC -> {
                 keyInput.resync()
                 play(HapticPattern.RESYNC)
+                emit(WritingEvent.Resynced)
             }
         }
     }
@@ -268,10 +297,12 @@ class WritingSession(
                 if (result !is SendResult.NotConnected) {
                     buffer.subList(0, items.size).clear()
                     _lastSent.value = (_lastSent.value + outcome.text).takeLast(LAST_SENT_MAX)
+                    emit(WritingEvent.Sent(outcome.text, items.strokes()))
                 }
                 log.send(outcome.text, outcome.ruleIds, plan.ruleIds, result.toString())
             }
             RecognitionOutcome.Empty, RecognitionOutcome.ModelNotReady -> {
+                emit(WritingEvent.StrokesDiscarded(items.strokes(), failed = true))
                 buffer.subList(0, items.size).clear() // E3, D9
                 play(HapticPattern.RECOGNITION_FAILED)
                 log.send("", emptyList(), emptyList(), outcome.toString())
@@ -295,12 +326,26 @@ class WritingSession(
             }
             SendResult.NotConnected -> {
                 play(HapticPattern.NOT_CONNECTED)
+                emit(WritingEvent.NotConnected)
                 if (hid.state.value is HidState.Stopped) starter.ensureStarted()
                 hid.warmUp()
             }
         }
         return result
     }
+
+    /** 키만 보내고, 호스트에 닿았으면(미연결 아님) 알린다. */
+    private suspend fun sendKey(action: Action, plan: KeyPlan, success: HapticPattern): Boolean {
+        val reached = send(plan, success) !is SendResult.NotConnected
+        if (reached) emit(WritingEvent.KeySent(action))
+        return reached
+    }
+
+    private fun emit(e: WritingEvent) {
+        _writingEvents.tryEmit(e)
+    }
+
+    private fun List<InkItem>.strokes() = mapNotNull { (it as? InkItem.Stroke)?.stroke }
 
     private fun play(p: HapticPattern) {
         haptics.play(p)

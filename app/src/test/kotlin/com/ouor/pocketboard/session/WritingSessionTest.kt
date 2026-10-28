@@ -39,6 +39,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -150,6 +151,27 @@ class WritingSessionTest {
         runCurrent()
         assertEquals(emptyList<Any>(), f.session.strokes.value)
         assertEquals(listOf("안녕"), f.session.lastSent.value)
+    }
+
+    @Test
+    fun events_tellWhyStrokesWent_andHostChunkDeleteDropsLastSent() = runTest {
+        val f = Fixture(this)
+        val seen = ArrayList<WritingEvent>()
+        backgroundScope.launch { f.session.writingEvents.collect { seen += it } }
+        runCurrent()
+        f.stroke(1)
+        f.stroke(2)
+        f.session.perform(Action.BACKSPACE) // B7
+        f.session.perform(Action.SEND)
+        f.session.perform(Action.BACKSPACE) // 획 없음 → 호스트
+        f.session.perform(Action.CHUNK_DELETE) // 호스트 덩어리
+        runCurrent()
+        assertEquals(
+            listOf("StrokeRemoved", "Sent", "KeySent(BACKSPACE)", "KeySent(CHUNK_DELETE)"),
+            seen.map { if (it is WritingEvent.KeySent) "KeySent(${it.action})" else it::class.simpleName },
+        )
+        assertEquals(1, (seen[1] as WritingEvent.Sent).strokes.size)
+        assertEquals(emptyList<String>(), f.session.lastSent.value)
     }
 
     /**

@@ -7,6 +7,7 @@ import com.ouor.pocketboard.core.gesture.HapticPattern
 import com.ouor.pocketboard.core.gesture.SwipeDirection
 import com.ouor.pocketboard.core.hid.HidState
 import com.ouor.pocketboard.core.ink.ModelState
+import com.ouor.pocketboard.session.WritingEvent
 
 // 사용자에게 보이는 이름(design-system §9 문구 톤). 앱은 한국어 전용이라 리소스 대신 여기 모은다.
 
@@ -120,6 +121,33 @@ fun HidState.badge(hasHosts: Boolean): Badge = when (this) {
     HidState.BluetoothOff -> Badge(BadgeKind.Problem, "폰 블루투스 꺼짐")
     is HidState.Unavailable -> Badge(BadgeKind.Problem, if (why == HidState.Why.NO_PERMISSION) "권한 필요" else "연결할 수 없음")
     HidState.Ready, HidState.Stopped -> if (hasHosts) Badge(BadgeKind.Idle, "연결 안 됨") else Badge(BadgeKind.NotSetUp, "설정 필요")
+}
+
+/** SC09 상태 줄(sc09-writing-v2 §3.2): 점 종류 + 짧은 글. */
+fun HidState.writingStatus(): Badge = when (this) {
+    is HidState.Connected -> Badge(BadgeKind.Connected, host.name)
+    is HidState.Connecting -> Badge(BadgeKind.Connecting, "${host.name} 연결 중…")
+    is HidState.Reconnecting ->
+        if (repairLikely) Badge(BadgeKind.Problem, "다시 페어링이 필요해요 · 뒤로 가서 확인")
+        else Badge(BadgeKind.Retrying, "다시 연결하는 중 · 호스트 블루투스를 확인")
+    HidState.BluetoothOff -> Badge(BadgeKind.Problem, "폰 블루투스가 꺼져 있어요")
+    HidState.Stopped, HidState.Ready -> Badge(BadgeKind.Idle, "연결 안 됨 · 쓰면 다시 연결해요")
+    HidState.Registering -> Badge(BadgeKind.Connecting, "준비 중…")
+    is HidState.Unavailable -> Badge(BadgeKind.Problem, "연결할 수 없어요 · 뒤로 가서 확인")
+}
+
+/** SC09 동작 표시(§3.3): 방금 무엇으로 판정됐나. 기호 한 개 위주. */
+fun WritingEvent.flashLabel(): String? = when (this) {
+    is WritingEvent.KeySent -> when (action) {
+        Action.ENTER -> "↵ 엔터"
+        Action.SPACE -> "␣"
+        Action.BACKSPACE -> "⌫"
+        Action.CHUNK_DELETE -> "⌫⌫ 덩어리"
+        else -> null
+    }
+    WritingEvent.Resynced -> "한/영"
+    is WritingEvent.StrokesDiscarded -> if (failed) "? 알아보지 못했어요" else null
+    else -> null
 }
 
 /** 홈·페어링에 쓰는 한 줄 이유(integration §4.1). */
