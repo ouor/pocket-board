@@ -13,6 +13,9 @@ materialIcons = "1.7.8"   # 마지막 배포판(이후 동결). Rounded 세트(d
 datastore = "1.1.7"
 mlkitDigitalInk = "19.0.0"
 junit = "4.13.2"
+robolectric = "4.17"
+roborazzi = "1.76.0"
+previewScanner = "0.9.3"
 
 [libraries]
 # 공통
@@ -40,6 +43,13 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 # 테스트 (JVM 단위 테스트만. 계측 테스트는 쓰지 않는다)
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+# QA 스크린샷(JVM, 기기 없음): Robolectric + Roborazzi, @Preview 재사용(docs/qa/qa-report.md)
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
+composable-preview-scanner = { group = "io.github.sergio-sastre.ComposablePreviewScanner", name = "android", version.ref = "previewScanner" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -47,4 +57,5 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 aboutlibraries = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }

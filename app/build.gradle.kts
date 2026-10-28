@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)   // 내비게이션 경로, 개발자 기록(JSONL)
     alias(libs.plugins.aboutlibraries)         // 오픈소스 라이선스 목록(SC12) 생성
+    alias(libs.plugins.roborazzi)              // QA 스크린샷: recordRoborazziDebug → docs/qa/screenshots
 }
 
 android {
@@ -33,6 +34,18 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true   // Robolectric
+        unitTests.all {
+            // Robolectric 이 JDK 21 에서 FileDescriptor 내부에 접근하려면 필요
+            it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
+            it.maxHeapSize = "2g"
+        }
+    }
+}
+
+roborazzi {
+    outputDir.set(rootProject.file("docs/qa/screenshots"))
 }
 
 dependencies {
@@ -62,4 +75,11 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.composable.preview.scanner)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
