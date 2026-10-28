@@ -18,6 +18,20 @@ class DubeolsikTest {
         assertEquals("djqt", keys("없")) // ㅄ → ㅂㅅ
     }
 
+    /** 완성형 11,172자 전부: 두벌식 자판 글자만 쓰고, 자모 2~5키(겹받침·이중모음 분해 포함). */
+    @Test
+    fun everySyllable_usesOnlyDubeolsikKeys() {
+        val allowed = "qwertyuiopasdfghjklzxcvbnmQWERTOP".toSet()
+        for (c in '가'..'힣') {
+            val k = Dubeolsik.keys(c)
+            assertTrue("$c → $k", k.length in 2..5 && k.all { it in allowed })
+        }
+        assertEquals("rk", Dubeolsik.keys('가'))
+        assertEquals("gl", Dubeolsik.keys('히'))
+        assertEquals("glg", Dubeolsik.keys('힣'))
+        assertEquals("Rhkfa", Dubeolsik.keys('꽒'))
+    }
+
     @Test
     fun standaloneJamo() {
         assertEquals("zz", keys("ㅋㅋ"))

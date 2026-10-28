@@ -34,6 +34,25 @@ class DefaultKeyInputTest {
         assertEquals(listOf("keymap/caps-restore"), plan.ruleIds)
     }
 
+    /**
+     * HID 사용 코드표: a~z = 0x04~0x1D, 1~9 = 0x1E~0x26, 0 = 0x27.
+     * CAPS_LOCK 방식(A21): 영문 앞에 Caps 를 켜고(한글 IME 우회), 소문자는 Shift, 숫자는 그대로, 끝에 Caps 복원.
+     */
+    @Test
+    fun allLowercaseLettersAndDigits_mapToHidUsages() {
+        val letters = (0 until 26).map { listOf(Press(0x04 + it, LEFT_SHIFT)) }
+        val digits = (0 until 10).map { listOf(Press(0x1E + it)) }
+        val expected = listOf(capsOn + letters[0]) + letters.drop(1) + digits + listOf(capsOff)
+        assertEquals(expected, input.text("abcdefghijklmnopqrstuvwxyz1234567890").units.map { it.steps })
+    }
+
+    @Test
+    fun allUppercaseLetters_useCapsLockThenRestore() {
+        val plan = input.text("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        val keys = (0 until 26).map { listOf(Press(0x04 + it)) }
+        assertEquals(listOf(capsOn + keys[0]) + keys.drop(1) + listOf(capsOff), plan.units.map { it.steps })
+    }
+
     @Test
     fun hangul_togglesOnce_andCommitsAtEnd() {
         val plan = input.text("안녕").send()

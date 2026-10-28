@@ -105,6 +105,14 @@ class DefaultGestureRecognizerTest {
     }
 
     @Test
+    fun remainingSwipes_twoFingerRightDown_threeFingerLeft() {
+        val r = DefaultGestureRecognizer(config)
+        assertEquals(listOf(Detected(Gesture.Swipe(2, SwipeDirection.RIGHT))), run(r, multi(2, 1000, dx = 80f, moveMs = 200)).outputs)
+        assertEquals(listOf(Detected(Gesture.Swipe(2, SwipeDirection.DOWN))), run(r, multi(2, 2000, dy = 90f, moveMs = 200)).outputs)
+        assertEquals(listOf(Detected(Gesture.Swipe(3, SwipeDirection.LEFT))), run(r, multi(3, 3000, dx = -80f, moveMs = 200)).outputs)
+    }
+
+    @Test
     fun palm_rejected_withoutBreakingWriting() {
         val r = DefaultGestureRecognizer(config)
         val out = run(r, tap(200f, 400f, 1000, major = 30f))
