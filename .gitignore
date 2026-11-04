@@ -18,3 +18,9 @@ local.properties
 # Release signing: the private key and its password never go in git (see signing/SIGNING.md)
 signing/release.p12
 signing/keystore.properties
+*.p12
+*.jks
+*.keystore
+/.idea/misc.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/vcs.xml

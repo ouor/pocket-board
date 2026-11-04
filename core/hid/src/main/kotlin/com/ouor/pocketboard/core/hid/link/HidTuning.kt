@@ -1,7 +1,7 @@
 package com.ouor.pocketboard.core.hid.link
 
 /**
- * 실기기에서만 정할 수 있는 타이밍·재시도 수치(A27). 근거는 docs/research/hid.md §2.8, §2.3.
+ * 실기기에서만 정할 수 있는 타이밍·재시도 수치(A27). 근거는 docs/dev/research/hid.md §2.8, §2.3.
  * 값은 모두 초안이다. 실측 후 이 파일만 고친다.
  */
 internal data class HidTuning(

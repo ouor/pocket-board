@@ -30,7 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * 조사용(docs/research/ink-rerank.md). 실제 ML Kit 후보 점수(RecognitionCandidate.score)·호출 지연·병렬 효과를 잰다. 판정 없음.
+ * 조사용(docs/dev/research/ink-rerank.md). 실제 ML Kit 후보 점수(RecognitionCandidate.score)·호출 지연·병렬 효과를 잰다. 판정 없음.
  * `am instrument -w -e class com.ouor.pocketboard.core.ink.ScoreProbeTest [-e parts 1,2,3,4] ...` (모델은 FieldEvalTest 가 받아 둔 것을 쓴다)
  * 4 의 "WIN" 줄은 PC 실험(scratch 의 rerank.py)의 입력. 2026-10-28 결과: score 는 ko·en 모두 null.
  */

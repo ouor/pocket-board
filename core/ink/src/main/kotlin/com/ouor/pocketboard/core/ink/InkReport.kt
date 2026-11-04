@@ -3,7 +3,7 @@ package com.ouor.pocketboard.core.ink
 import com.ouor.pocketboard.core.ink.rules.InkConfig
 import kotlinx.serialization.Serializable
 
-// 전송 1회 디버그 보고서(docs/core/ink.md §3.2). 획은 좌표 대신 "획 번호"로 가리킨다:
+// 전송 1회 디버그 보고서(docs/dev/core/ink.md §3.2). 획은 좌표 대신 "획 번호"로 가리킨다:
 // 전송한 items 중 InkItem.Stroke 만 순서대로 센 0부터의 번호(InkItem.Stroke.id 아님). 좌표는 :app 이 따로 저장한다.
 // 필드 이름·뜻은 저장용으로 고정. 새 정보는 기본값 있는 필드로만 더한다.
 

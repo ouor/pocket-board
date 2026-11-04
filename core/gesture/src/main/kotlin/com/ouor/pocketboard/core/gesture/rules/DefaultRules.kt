@@ -11,7 +11,7 @@ data class GestureRules(
 )
 
 /**
- * 1차 최소 규칙(gesture.md §3.3, architecture §9.2). 규칙 추가 절차는 architecture §9.3, docs/core/gesture.md.
+ * 1차 최소 규칙(gesture.md §3.3, architecture §9.2). 규칙 추가 절차는 architecture §9.3, docs/dev/core/gesture.md.
  *
  * | 규칙 id | 조건 | 결론 | 근거 사례 |
  * |---|---|---|---|

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/design/icon.png" width="112" alt="pocketboard 아이콘: 남색 바탕에 고리를 그리며 올라가는 손글씨 한 획과 점 두 개">
+<img src="docs/images/icon.png" width="112" alt="pocketboard 아이콘: 남색 바탕에 고리를 그리며 올라가는 손글씨 한 획과 점 두 개">
 
 # pocketboard (포켓보드)
 
@@ -24,9 +24,9 @@
 3. **보내기**: 한 손가락으로 **두 번 톡** 치면 쓴 글씨가 PC에 입력돼요. 쓴 글씨가 없을 때 두 번 톡 치면 엔터예요.
 
 <div align="center">
-<img src="docs/qa/screenshots/SC10_home_connected.png" width="30%" alt="홈: 연결된 PC 이름과 연결됨 표시, 쓰기 시작 버튼, 제스처 한눈에">
-<img src="docs/qa/screenshots/SC05_pairing_waiting.png" width="30%" alt="PC 연결 안내: Windows에서 키보드를 추가하는 단계">
-<img src="docs/qa/screenshots/SC13_mapping.png" width="30%" alt="제스처 설정: 동작마다 고른 제스처와 진동 패턴">
+<img src="docs/images/SC10_home_connected.png" width="30%" alt="홈: 연결된 PC 이름과 연결됨 표시, 쓰기 시작 버튼, 제스처 한눈에">
+<img src="docs/images/SC05_pairing_waiting.png" width="30%" alt="PC 연결 안내: Windows에서 키보드를 추가하는 단계">
+<img src="docs/images/SC13_mapping.png" width="30%" alt="제스처 설정: 동작마다 고른 제스처와 진동 패턴">
 </div>
 <div align="center"><sub>홈 · PC 연결 · 제스처</sub></div>
 
@@ -120,11 +120,7 @@ PC에서 `apksigner verify --print-certs pocket-board-*.apk`로 확인할 수 �
 
 - 빌드: Android Studio에서 열거나 `./gradlew assembleDebug`. 테스트는 `./gradlew :app:testDebugUnitTest`.
 - 릴리즈 빌드: `./gradlew assembleRelease`는 arm64-v8a 전용 APK를 만들어요(`app/build/outputs/apk/release/`). 서명 키(`signing/keystore.properties`)가 없으면 서명 없는 APK가 나와요. 서명 방법은 [signing/SIGNING.md](signing/SIGNING.md)를 봐 주세요. 키 파일은 저장소에 없어요.
-- 문서
-  - 컨셉과 결정: [docs/concept.md](docs/concept.md), [docs/decisions.md](docs/decisions.md)
-  - 기획: [docs/planning/prd.md](docs/planning/prd.md)
-  - 구조: [docs/architecture/architecture.md](docs/architecture/architecture.md), [docs/architecture/integration.md](docs/architecture/integration.md)
-  - 모듈 명세: [hid](docs/core/hid.md) · [keymap](docs/core/keymap.md) · [ink](docs/core/ink.md) · [gesture](docs/core/gesture.md)
+- 개발 문서(기획, 설계, 모듈 명세, 조사, QA): [docs/dev](docs/dev)
 - 모듈
   - `:core:hid`: 블루투스 HID 키보드 등록, 페어링, 재연결
   - `:core:keymap`: 글자 → 키 입력 변환(두벌식, 한/영 상태 추적)
@@ -136,3 +132,7 @@ PC에서 `apksigner verify --print-certs pocket-board-*.apk`로 확인할 수 �
   - 연결: Android `BluetoothHidDevice`
   - 저장: DataStore
 - 설정의 **버전**을 일곱 번 누르면 숨은 개발자 옵션(접촉 기록, 한/영 입력 방식, 인식·제스처 판정 값)이 열려요.
+
+## 📄 라이선스
+
+[MIT](LICENSE). 이 저장소의 코드에만 적용돼요. 손글씨 인식에 쓰는 Google ML Kit는 [Google의 약관](https://developers.google.com/ml-kit/terms)을 따라요.

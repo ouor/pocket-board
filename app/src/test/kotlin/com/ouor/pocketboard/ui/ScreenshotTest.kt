@@ -37,7 +37,7 @@ import org.robolectric.annotation.GraphicsMode
 import sergio.sastre.composable.preview.scanner.android.AndroidComposablePreviewScanner
 
 /**
- * QA 리뷰용 스크린샷(JVM, 기기 없음). 기록: `gradlew.bat :app:recordRoborazziDebug` → docs/qa/screenshots/.
+ * QA 리뷰용 스크린샷(JVM, 기기 없음). 기록: `gradlew.bat :app:recordRoborazziDebug` → app/build/outputs/roborazzi/.
  * 일반 `test` 에서는 그리기만 하고 파일은 쓰지 않는다(그리다 죽는 화면을 잡는 역할).
  *
  * 화면은 UI 개발자의 @Preview 를 그대로 부르고(이름으로 찾음), 프리뷰에 없는 상태만 같은 화면 함수에 가짜 값을 넣어 부른다.

@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)   // 내비게이션 경로, 개발자 기록(JSONL)
     alias(libs.plugins.aboutlibraries)         // 오픈소스 라이선스 목록(SC12) 생성
-    alias(libs.plugins.roborazzi)              // QA 스크린샷: recordRoborazziDebug → docs/qa/screenshots
+    alias(libs.plugins.roborazzi)              // QA 스크린샷: recordRoborazziDebug → app/build/outputs/roborazzi
 }
 
 // 릴리스 서명(signing/SIGNING.md). keystore.properties 가 없으면(CI, 다른 개발자) 릴리스는 서명 없이 빌드된다.
@@ -65,7 +65,7 @@ android {
 }
 
 roborazzi {
-    outputDir.set(rootProject.file("docs/qa/screenshots"))
+    outputDir.set(rootProject.file("app/build/outputs/roborazzi"))
 }
 
 dependencies {

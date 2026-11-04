@@ -3,7 +3,7 @@ package com.ouor.pocketboard.core.gesture.engine
 import com.ouor.pocketboard.core.gesture.GestureConfig
 
 /**
- * [GestureConfig] 임계값 9개의 허용 범위(docs/core/gesture.md §3). 개발자 옵션(SC17)과 설정 저장소는 이 값을 그대로 쓴다.
+ * [GestureConfig] 임계값 9개의 허용 범위(docs/dev/core/gesture.md §3). 개발자 옵션(SC17)과 설정 저장소는 이 값을 그대로 쓴다.
  * 화면 크기(screenWidthDp/HeightDp)는 :app 이 측정해 넣는 값이라 범위가 없다(0 = 모름).
  */
 object GestureRanges {

@@ -107,7 +107,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
-// ---------- SC09 쓰기 화면 v2 (docs/design/sc09-writing-v2.md) ----------
+// ---------- SC09 쓰기 화면 v2 (docs/dev/design/sc09-writing-v2.md) ----------
 
 /** 사용자 결정: 쓰기 화면 창 밝기 10%(§4.1). */
 private const val WRITING_BRIGHTNESS = 0.10f

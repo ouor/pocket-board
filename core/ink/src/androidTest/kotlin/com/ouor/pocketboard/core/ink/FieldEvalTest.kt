@@ -25,7 +25,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * 현장 사례(src/test/resources/field/cases.tsv)를 실제 ML Kit 으로 전략별로 돌려 글자 오류율(CER)을 표로 낸다(docs/core/ink.md §6).
+ * 현장 사례(src/test/resources/field/cases.tsv)를 실제 ML Kit 으로 전략별로 돌려 글자 오류율(CER)을 표로 낸다(docs/dev/core/ink.md §6).
  * 판정은 하지 않는다(항상 통과). 결과는 `am instrument` 출력과 logcat "pb.ink.eval".
  *
  * 실행(기기에 이 테스트 앱이 ko·en 모델을 처음 한 번 받는다, 와이파이 필요):

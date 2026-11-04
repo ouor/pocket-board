@@ -38,7 +38,7 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * 수동 DI(architecture R8). Application 이 하나 만들고 액티비티·서비스·타일이 같은 인스턴스를 쓴다.
- * UI 는 여기 공개 멤버(상태 StateFlow + 명령)만 쓴다. 목록은 docs/architecture/integration.md.
+ * UI 는 여기 공개 멤버(상태 StateFlow + 명령)만 쓴다. 목록은 docs/dev/architecture/integration.md.
  */
 class AppContainer(context: Context) {
     private val app = context.applicationContext

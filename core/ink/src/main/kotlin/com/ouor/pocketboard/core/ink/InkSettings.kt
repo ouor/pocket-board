@@ -8,7 +8,7 @@ import com.ouor.pocketboard.core.ink.rules.InkConfig
  */
 data class InkSettings(
     val segmentation: SegmentationMode = SegmentationMode.RULES,
-    /** 분할·재배치 임계값(A36). 저장 키·범위는 docs/core/ink.md §3. */
+    /** 분할·재배치 임계값(A36). 저장 키·범위는 docs/dev/core/ink.md §3. */
     val config: InkConfig = InkConfig(),
 )
 

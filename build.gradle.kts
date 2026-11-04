@@ -1,4 +1,4 @@
-// 모듈 구조와 의존 방향: docs/architecture/architecture.md §2
+// 모듈 구조와 의존 방향: docs/dev/architecture/architecture.md §2
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false

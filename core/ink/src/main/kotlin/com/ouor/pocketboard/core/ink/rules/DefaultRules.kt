@@ -3,7 +3,7 @@ package com.ouor.pocketboard.core.ink.rules
 import com.ouor.pocketboard.core.common.rule.Rule
 
 /**
- * :core:ink 의 단계별 규칙 목록(F28, A19). 순서가 의미를 가진다. 추가 절차는 architecture.md §9.3, docs/core/ink.md.
+ * :core:ink 의 단계별 규칙 목록(F28, A19). 순서가 의미를 가진다. 추가 절차는 architecture.md §9.3, docs/dev/core/ink.md.
  *
  * | 단계 | id | 조건 | 결론 | 근거 |
  * |---|---|---|---|---|

@@ -203,7 +203,7 @@ internal object SettingsCodec {
     }
 }
 
-/** InkConfig 허용 범위(docs/core/ink.md §3.1). 저장소와 개발자 옵션 화면이 같이 쓴다. */
+/** InkConfig 허용 범위(docs/dev/core/ink.md §3.1). 저장소와 개발자 옵션 화면이 같이 쓴다. */
 object InkRanges {
     val minCharSize = 8f..96f
     val rightOfGapRatio = 0f..2f
