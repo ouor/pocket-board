@@ -120,7 +120,6 @@ PC에서 `apksigner verify --print-certs pocket-board-*.apk`로 확인할 수 �
 
 - 빌드: Android Studio에서 열거나 `./gradlew assembleDebug`. 테스트는 `./gradlew :app:testDebugUnitTest`.
 - 릴리즈 빌드: `./gradlew assembleRelease`는 arm64-v8a 전용 APK를 만들어요(`app/build/outputs/apk/release/`). 서명 키(`signing/keystore.properties`)가 없으면 서명 없는 APK가 나와요. 서명 방법은 [signing/SIGNING.md](signing/SIGNING.md)를 봐 주세요. 키 파일은 저장소에 없어요.
-- 개발 문서(기획, 설계, 모듈 명세, 조사, QA): [docs/dev](docs/dev)
 - 모듈
   - `:core:hid`: 블루투스 HID 키보드 등록, 페어링, 재연결
   - `:core:keymap`: 글자 → 키 입력 변환(두벌식, 한/영 상태 추적)

@@ -24,3 +24,6 @@ signing/keystore.properties
 /.idea/misc.xml
 /.idea/deploymentTargetSelector.xml
 /.idea/vcs.xml
+
+# Dev notes stay local
+/docs/dev/
